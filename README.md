@@ -10,3 +10,13 @@ The following are the requirements:
 - nvidia-driver 430.64
 - docker-compose 1.29.2
 
+Note that individual images need to be built before running
+```bash
+$ docker-compose up
+```
+In this case I have named it shiotani_stereo which is what appears in docker-compose.yml
+This can be done by executing the follwing inside the directory with Dockerfile:
+```bash
+$ docker build -t <container_name> .
+```
+
