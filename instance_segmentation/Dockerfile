@@ -8,7 +8,7 @@ RUN ln -s cuda-10.1 /usr/local/cuda
 
 # I think default is python3.8 which should be ok
 RUN apt update && apt install -y python3-pip && apt install -y git
-RUN pip install mmcv-full==1.3.0 -f https://download.openmmlab.com/mmcv/dist/cu101/torch1.7.0/index.html
+RUN pip install mmcv-full==1.3.8 -f https://download.openmmlab.com/mmcv/dist/cu101/torch1.7.0/index.html
 RUN pip install torch==1.7.0 torchvision==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 RUN cd && git clone https://github.com/open-mmlab/mmdetection.git && \
     cd mmdetection && \
