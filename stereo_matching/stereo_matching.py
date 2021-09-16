@@ -9,8 +9,9 @@ import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
-from rospy.numpy_msg import numpy_msg
-from rospy_tutorials.msg import Floats
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
+# from rospy.numpy_msg import numpy_msg
+# from rospy_tutorials.msg import Floats
 
 sys.path.append("/root/catkin_ws/src/stereo_matching/src/aanet")
 from aanet import load_aanet, aanet_predict
@@ -35,6 +36,7 @@ class StereoMatching:
         self.aanet = None
         self.device = None
         self.flg = None
+        self.depth_msg = None
 
     def camera_name_callback(self, msg):
         self.camera_name = msg.data
@@ -56,7 +58,24 @@ class StereoMatching:
                 self.aanet, self.device = load_aanet(pretrained_aanet="aanet/pretrained/aanet_kitti15-fb2a0d23.pth")
             self.depth = aanet_predict(self.array_right, self.array_left,
                                        self.aanet, self.device).astype(np.float32) # to publish as array has to be float32 for some reason
-    
+            self.depth_msg = self.to_ros_array(self.depth)
+
+    def to_ros_array(self, array):
+        msg = Float32MultiArray()
+        msg.data = array.flatten()
+        msg.layout.data_offset = 0
+#        msg.layout.dim = [MultiArrayDimension()] * array.shape[0]
+        msg.layout.dim = [MultiArrayDimension() for i in range(array.shape[0])]
+        msg.layout.dim[0].label = "height"
+        msg.layout.dim[0].size = array.shape[0]
+        msg.layout.dim[0].stride = array.shape[0] * array.shape[1]
+        msg.layout.dim[1].label = "width"
+        msg.layout.dim[1].size = array.shape[1]
+        msg.layout.dim[0].stride = array.shape[1]
+        return msg
+        
+
+
 def main():
     rospy.init_node("stereo_matching", anonymous=True)
     sm = StereoMatching()
@@ -64,11 +83,12 @@ def main():
     rospy.Subscriber(sm.right_topic, Image, sm.right_callback)
     rospy.Subscriber(sm.left_topic, Image, sm.left_callback)
     rospy.Subscriber(sm.flg_topic, String, sm.main_callback)
-    pub = rospy.Publisher(sm.depth_topic, numpy_msg(Floats), queue_size=10)
+    pub = rospy.Publisher(sm.depth_topic, Float32MultiArray, queue_size=10)
     r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        pub.publish(sm.depth)
-        r.sleep()
+        if sm.depth_msg is not None:
+            pub.publish(sm.depth_msg)
+            r.sleep()
 #    if sm.flg == "1":
 #        pub.publish(sm.depth)
 #        sm.flg = "0"
