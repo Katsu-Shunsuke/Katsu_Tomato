@@ -8,8 +8,7 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from std_msgs.msg import String
-from std_msgs.msg import Float32MultiArray, MultiArrayDimension
+from std_msgs.msg import String, Float32MultiArray, MultiArrayDimension
 # from rospy.numpy_msg import numpy_msg
 # from rospy_tutorials.msg import Floats
 
@@ -64,8 +63,8 @@ class StereoMatching:
         msg = Float32MultiArray()
         msg.data = array.flatten()
         msg.layout.data_offset = 0
-#        msg.layout.dim = [MultiArrayDimension()] * array.shape[0]
-        msg.layout.dim = [MultiArrayDimension() for i in range(array.shape[0])]
+#        msg.layout.dim = [MultiArrayDimension() for i in range(array.shape[0])]
+        msg.layout.dim = [MultiArrayDimension(), MultiArrayDimension()]
         msg.layout.dim[0].label = "height"
         msg.layout.dim[0].size = array.shape[0]
         msg.layout.dim[0].stride = array.shape[0] * array.shape[1]
