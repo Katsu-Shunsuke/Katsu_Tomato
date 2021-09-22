@@ -36,12 +36,21 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=utility,compute
       - "ROS_MASTER_URI=http://ros-master:11311"
       - "ROS_HOSTNAME=stereo_matching"
-#    command: bash -c "rosbag play -l /root/catkin_ws/src/dummy_camera/2021-05-20-09-24-08.bag &&
-#                      python /root/catkin_ws/src/dummy_camera/src/dummy_camera.py &&
-#                      python /root/catkin_ws/src/stereo_matching/src/stereo_matching.py"
-#    restart: always
 
-
+  instance_segmentation:
+    image: shiotani_instance:latest
+#    command: python /root/catkin_ws/src/instance_segmentation/src/instance_segmentation.py
+    command: python /root/keep_alive.py
+    depends_on:
+      - ros-master
+    networks:
+      - ros
+    runtime: nvidia
+    environment: 
+      - NVIDIA_VISIBLE_DEVICES=0,1
+      - NVIDIA_DRIVER_CAPABILITIES=utility,compute
+      - "ROS_MASTER_URI=http://ros-master:11311"
+      - "ROS_HOSTNAME=stereo_matching"
 
 
 

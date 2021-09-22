@@ -62,10 +62,11 @@ RUN . /opt/ros/noetic/setup.sh && \
 # Be careful, COPY destination needs to be absolute path, not relative using like ~
 RUN cd ~/catkin_ws/src/ && catkin_create_pkg stereo_matching std_msgs sensor_msgs rospy cv_bridge
 RUN cd ~/catkin_ws/src/ && catkin_create_pkg dummy_camera std_msgs rospy
-COPY stereo_matching.py /root/catkin_ws/src/stereo_matching/src/stereo_matching.py
+COPY stereo_matching_node.py /root/catkin_ws/src/stereo_matching/src/stereo_matching_node.py
+COPY utils.py /root/catkin_ws/src/stereo_matching/src/utils.py
 COPY verify_array.py /root/catkin_ws/src/stereo_matching/src/verify_array.py
 COPY 2021-05-20-09-24-08.bag /root/catkin_ws/src/dummy_camera/2021-05-20-09-24-08.bag
-COPY dummy_camera.py /root/catkin_ws/src/dummy_camera/src/dummy_camera.py
+COPY dummy_camera_node.py /root/catkin_ws/src/dummy_camera/src/dummy_camera_node.py
 COPY dummy_camera.sh /root/catkin_ws/src/dummy_camera/src/dummy_camera.sh
 RUN mv ~/aanet/ ~/catkin_ws/src/stereo_matching/src/
 

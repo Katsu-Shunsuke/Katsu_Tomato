@@ -16,6 +16,8 @@ RUN cd && git clone https://github.com/open-mmlab/mmdetection.git && \
     pip install -v -e .
 RUN ln -s python3.8 /usr/bin/python
 
+RUN apt install -y tmux vim
+
 # cuda path
 ENV PATH /usr/local/cuda-10.1/bin${PATH:+:${PATH}}
 ENV LD_LIBRARY_PATH /usr/local/cuda-10.1/lib64:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
@@ -29,10 +31,13 @@ RUN . /opt/ros/noetic/setup.sh && \
 RUN cd ~/catkin_ws/src/ && catkin_create_pkg instance_segmentation std_msgs sensor_msgs rospy cv_bridge
 
 COPY epoch_400.pth /root/catkin_ws/src/instance_segmentation/epoch_400.pth
-COPY instance_segmentation.py /root/catkin_ws/src/instance_segmentation/src/instance_segmentation.py
+COPY cascade_mask_rcnn_r50_fpn_1x_tomato.py /root/catkin_ws/src/instance_segmentation/cascade_mask_rcnn_r50_fpn_1x_tomato.py
+COPY instance_segmentation_node.py /root/catkin_ws/src/instance_segmentation/src/instance_segmentation_node.py
+COPY utils.py /root/catkin_ws/src/instance_segmentation/src/utils.py
 
-
-
+RUN mkdir /root/catkin_ws/src/instance_segmentation/msg
+COPY InstSegRes.msg /root/catkin_ws/src/instance_segmentation/msg/InstSegRes.msg
+COPY keep_alive.py /root/keep_alive.py
 
 
 
