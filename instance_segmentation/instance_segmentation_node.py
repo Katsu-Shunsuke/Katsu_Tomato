@@ -32,7 +32,6 @@ class InstanceSegmentation:
         self.im_array = None
         self.result = None
         self.maskrcnn = None
-        self.device = None
         self.flg = None
         self.bbox_stem = None
         self.bbox_tomato = None
@@ -52,7 +51,7 @@ class InstanceSegmentation:
     def main_callback(self, msg):
         if msg.data == "1" and self.im_array is not None:
             self.flg = "1"
-            if self.maskrcnn is None or self.device is None:
+            if self.maskrcnn is None:
                 self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
             self.result = inference_detector(self.maskrcnn, self.im_array) # list of list of array
             self.result_msg = self.to_InstSegRes(self.result)
