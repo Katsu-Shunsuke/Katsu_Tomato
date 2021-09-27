@@ -1,6 +1,8 @@
-stereo_matching/2021-05-20-09-24-08.bag
 stereo_matching/cuda-10.0 
-stereo_matching/cuda-8.0.tar.gz 
-stereo_matching/cuda-9.0.tar.gz
+stereo_matching/stuffs
+stereo_matching/ros_packages/dummy_camera/2021-05-20-09-24-08.bag
 instance_segmentation/cuda-10.1
-instance_segmentation/epoch_400.pth
+instance_segmentation/stuffs
+instance_segmentation/ros_packages/instance_segmentation/epoch_400.pth
+instance_segmentation/ros_packages/dummy_camera/2021-05-20-09-24-08.bag
+

@@ -22,7 +22,7 @@ RUN python -m pip install numpy -I
 
 # stuffs
 RUN apt install -y tmux; apt install -y vim
-COPY aanet/ /root/aanet/
+# COPY aanet/ /root/aanet/
 RUN python -m pip install scikit-image
 RUN rm -r /usr/lib/python3/dist-packages/PIL/
 RUN rm -r /usr/lib/python3/dist-packages/Pillow*    
@@ -44,7 +44,7 @@ RUN rm /usr/bin/g++ && ln -s g++-7 /usr/bin/g++ ; \
     rm /usr/bin/x86_64-linux-gnu-g++ && ln -s g++-7 /usr/bin/x86_64-linux-gnu-g++
 
 # set environment variables for cuda
-RUN cd ~/aanet/nets/deform_conv && bash build.sh
+# RUN cd ~/aanet/nets/deform_conv && bash build.sh
 ENV PATH /usr/local/cuda-10.0/bin${PATH:+:${PATH}}
 ENV LD_LIBRARY_PATH /usr/local/cuda-10.0/lib64:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 # Now "bash scripts/aanet_predict.sh" will work.
@@ -58,30 +58,33 @@ RUN . /opt/ros/noetic/setup.sh && \
     cd ~/catkin_ws && \
     catkin_make
 
-# copy stereomatching package from host to container and move aanet directory to package
-# Be careful, COPY destination needs to be absolute path, not relative using like ~
-RUN cd ~/catkin_ws/src/ && catkin_create_pkg stereo_matching std_msgs sensor_msgs rospy cv_bridge
-RUN cd ~/catkin_ws/src/ && catkin_create_pkg dummy_camera std_msgs rospy
-COPY stereo_matching_node.py /root/catkin_ws/src/stereo_matching/src/stereo_matching_node.py
-COPY utils.py /root/catkin_ws/src/stereo_matching/src/utils.py
-COPY verify_array.py /root/catkin_ws/src/stereo_matching/src/verify_array.py
-COPY 2021-05-20-09-24-08.bag /root/catkin_ws/src/dummy_camera/2021-05-20-09-24-08.bag
-COPY dummy_camera_node.py /root/catkin_ws/src/dummy_camera/src/dummy_camera_node.py
-COPY dummy_camera.sh /root/catkin_ws/src/dummy_camera/src/dummy_camera.sh
-RUN mv ~/aanet/ ~/catkin_ws/src/stereo_matching/src/
-
-# need to fix the issue of rosrun not being able to find python script- cmakelist
-RUN . /opt/ros/noetic/setup.sh && \
-    cd ~/catkin_ws && catkin_make
-# run roscore inside a different container
-
-
+# # copy stereomatching package from host to container and move aanet directory to package
+# # Be careful, COPY destination needs to be absolute path, not relative using like ~
+# RUN cd ~/catkin_ws/src/ && catkin_create_pkg stereo_matching std_msgs sensor_msgs rospy cv_bridge
+# RUN cd ~/catkin_ws/src/ && catkin_create_pkg dummy_camera std_msgs rospy
+# COPY stereo_matching_node.py /root/catkin_ws/src/stereo_matching/src/stereo_matching_node.py
+# COPY utils.py /root/catkin_ws/src/stereo_matching/src/utils.py
+# COPY verify_array.py /root/catkin_ws/src/stereo_matching/src/verify_array.py
+# COPY 2021-05-20-09-24-08.bag /root/catkin_ws/src/dummy_camera/2021-05-20-09-24-08.bag
+# COPY dummy_camera_node.py /root/catkin_ws/src/dummy_camera/src/dummy_camera_node.py
+# COPY dummy_camera.sh /root/catkin_ws/src/dummy_camera/src/dummy_camera.sh
+# RUN mv ~/aanet/ ~/catkin_ws/src/stereo_matching/src/
+# 
+# # need to fix the issue of rosrun not being able to find python script- cmakelist
+# RUN . /opt/ros/noetic/setup.sh && \
+#     cd ~/catkin_ws && catkin_make
+# # run roscore inside a different container
 
 
 
 
+COPY keep_alive.py /root/keep_alive.py
 
+COPY ros_packages/dummy_camera /root/catkin_ws/src/dummy_camera
+COPY ros_packages/stereo_matching /root/catkin_ws/src/stereo_matching
+RUN . /opt/ros/noetic/setup.sh && cd ~/catkin_ws && catkin_make -DCMAKE_BUILD_TYPE=Release
 
+RUN cd ~/catkin_ws/src/stereo_matching/src/aanet/nets/deform_conv && bash build.sh
 
 
 
