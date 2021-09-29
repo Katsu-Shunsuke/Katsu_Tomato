@@ -15,7 +15,7 @@ from std_msgs.msg import String, Float32MultiArray, MultiArrayDimension
 sys.path.append("/root/catkin_ws/src/stereo_matching/src/aanet")
 from aanet import load_aanet, aanet_predict
 
-from utils import numpy_to_float32
+from ros_utils import numpy_to_float32
 
 class StereoMatching:
     def __init__(self):
@@ -57,6 +57,7 @@ class StereoMatching:
             self.flg = "1"
             if self.aanet is None or self.device is None:
                 self.aanet, self.device = load_aanet(pretrained_aanet="aanet/pretrained/aanet_kitti15-fb2a0d23.pth")
+            print("running aanet")
             self.depth = aanet_predict(self.array_right, self.array_left,
                                        self.aanet, self.device).astype(np.float32) # to publish as array has to be float32 for some reason
             self.depth_msg = numpy_to_float32(self.depth)
@@ -74,9 +75,10 @@ def main():
     pub = rospy.Publisher(sm.depth_topic, Float32MultiArray, queue_size=1)
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        if sm.depth_msg is not None:
+        if sm.depth_msg is not None and sm.flg=="1":
             pub.publish(sm.depth_msg)
 #            r.sleep()
+            sm.flg = "0"
 
 #    if sm.flg == "1":
 #        pub.publish(sm.depth)

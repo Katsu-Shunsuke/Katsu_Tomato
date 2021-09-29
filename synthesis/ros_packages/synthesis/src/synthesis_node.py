@@ -12,34 +12,47 @@ from std_msgs.msg import String, Float32MultiArray, MultiArrayDimension, Header
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 
-import mmcv
-from mmdet.apis import init_detector, inference_detector
+from utils import rosarray_to_numpy
+from synthesis.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
 
-from utils import numpy_to_rosarray 
-from instance_segmentation.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
-
-class InstanceSegmentation:
+class Synthesis:
     def __init__(self):
         # topics to subscribe and publish to
         self.im_topic = "/zedA/zed_node_A/left/image_rect_color" # left image because disparity map is on left image.
 #        self.flg_topic = "instance_segmentation_flg"
-        self.flg_topic = "stereo_matching_flg"
-        self.result_topic = "instance_segmentation_output"
-        self.config_file = '../cascade_mask_rcnn_r50_fpn_1x_tomato.py'
-        self.checkpoint_file = '../epoch_400.pth'
+        self.flg_topic = "synthesis_flg"
+        self.result_topic = "synthesis_output"
+        self.depth = "aanet_depth_output"
+        self.instseg = "instance_segmentation_output"
         # output of callback methods
-        self.im = None
+        self.depth = None
         self.im_array = None
         self.result = None
-        self.maskrcnn = None
         self.flg = None
         self.result_msg = None
+        self.bbox_stem = None
+        self.bbox_tomato = None
+        self.bbox_pedicel = None
+        self.bbox_sepal = None
+        self.mask_stem = None
+        self.mask_tomato = None
+        self.mask_pedicel = None
+        self.mask_sepal = None
 
-    def im_callback(self, msg):
-        self.im = msg      
-        cv_image = CvBridge().imgmsg_to_cv2(self.im, "bgr8")
-        self.im_array = np.array(cv_image)
-    
+    def depth_callback(self, msg):
+        self.depth = rosarray_to_numpy(msg)
+        # convert to world coordinates
+
+    def instseg_callback(self, msg):
+        self.bbox_stem = rosarray_to_numpy(msg.bbox_stem)
+        self.bbox_tomato = rosarray_to_numpy(msg.bbox_tomato)
+        self.bbox_pedicel = rosarray_to_numpy(msg.bbox_pedicel)
+        self.bbox_sepal = rosarray_to_numpy(msg.bbox_sepal)
+        self.mask_stem = rosarray_to_numpy(msg.mask_stem) # indices not bool array
+        self.mask_tomato = rosarray_to_numpy(msg.mask_tomato)
+        self.mask_pedicel = rosarray_to_numpy(msg.mask_pedicel)
+        self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
+
     def main_callback(self, msg):
         if msg.data == "1" and self.im_array is not None:
             self.flg = "1"

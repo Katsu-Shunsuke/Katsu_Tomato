@@ -1,5 +1,5 @@
 import rospy
-from std_msgs.msg import Float32MultiArray, MultiArrayDimension
+from std_msgs.msg import Float32MultiArray, UInt8MultiArray, MultiArrayDimension
 
 import numpy as np
 
@@ -23,9 +23,17 @@ import numpy as np
 #     array = array.reshape([h, w])
 #     return array
 
-def numpy_to_float32(array):
-    msg = Float32MultiArray()
-    msg.data = array.flatten().astype(np.float32)
+def numpy_to_rosarray(array, dtype):
+    if dtype == "float32":
+        msg = Float32MultiArray()
+        datatype = np.float32
+    elif dtype == "uint8":
+        msg = UInt8MultiArray()
+        datatype = np.uint8
+    else:
+        raise Exception("unrecognized dtype")
+    # MultiArrayDimension bit
+    msg.data = tuple(array.flatten().astype(datatype))
     msg.layout.data_offset = 0
     msg.layout.dim = []
     for i, size in enumerate(array.shape):
@@ -35,7 +43,7 @@ def numpy_to_float32(array):
         msg.layout.dim[i].stride = prod(array.shape[(i - len(array.shape)):])
     return msg
         
-def float32_to_numpy(msg):
+def rosarray_to_numpy(msg):
     array = np.array(msg.data) # tuple of length h x w
     shape = [i.size for i in msg.layout.dim]
     array = array.reshape(shape)
@@ -46,3 +54,6 @@ def prod(list_or_tuple):
     for i in list_or_tuple:
         res *= i
     return res
+
+
+
