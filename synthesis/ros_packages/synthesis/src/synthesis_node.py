@@ -12,7 +12,7 @@ from std_msgs.msg import String, Float32MultiArray, MultiArrayDimension, Header
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 
-from utils import rosarray_to_numpy
+from utils import rosarray_to_numpy, stereo_reconstruction
 from synthesis.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
@@ -26,6 +26,7 @@ class Synthesis:
         self.instseg = "instance_segmentation_output"
         # output of callback methods
         self.depth = None
+        self.xyz = None
         self.im_array = None
         self.result = None
         self.flg = None
@@ -42,7 +43,8 @@ class Synthesis:
     def depth_callback(self, msg):
         self.depth = rosarray_to_numpy(msg)
         # convert to world coordinates
-
+        self.xyz = stereo_reconstruction(self.depth)
+        
     def instseg_callback(self, msg):
         self.bbox_stem = rosarray_to_numpy(msg.bbox_stem)
         self.bbox_tomato = rosarray_to_numpy(msg.bbox_tomato)
@@ -54,8 +56,20 @@ class Synthesis:
         self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
 
     def main_callback(self, msg):
-        if msg.data == "1" and self.im_array is not None:
+        if msg.data == "1" and self.depth is not None and self.mask_sepal is not None:
             self.flg = "1"
+                bingo = False
+                while not bingo:
+                # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
+                # run polynomial regression
+                # obtain the end with smaller y value
+                # if that end point is within a tomato bbox, obtain a small patch centered around the tomato mask
+                # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
+                # bingo = True
+
+                # send this info to the manipulator  
+
+
             if self.maskrcnn is None:
                 self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
             print("running maskrcnn")

@@ -55,5 +55,23 @@ def prod(list_or_tuple):
         res *= i
     return res
 
-
+def stereo_reconstruction(d, b=63, f=2.8):
+    # b [mm]
+    # f [mm]
+   
+    r_x = d.shape[1] # number of pixels in horizontal direction
+    r_y = d.shape[0] # number of pixels in vertical direction
+    p_x = 0.002 * 1920 / r_x # pixel size in mm, horizontally. Need to readjust for resized image (zed camera at 1920x1080 is 0.002 mm per pixel)
+    p_y = 0.002 * 1080 / r_y # pixel size in mm, vertically.
+    d[d==0] = 0.0000000001 # to prevent dividing by zero
+   
+    z = b * (f/p_x) / d # d is in pixels, so z is in mm
+   
+    xv, yv = np.meshgrid(np.arange(r_x), np.arange(r_y))
+    x = (xv - r_x/2) * p_x * z / f
+    y = (yv - r_y/2) * p_y * z / f
+   
+    xyz = np.dstack([x, y, z])
+   
+    return xyz
 
