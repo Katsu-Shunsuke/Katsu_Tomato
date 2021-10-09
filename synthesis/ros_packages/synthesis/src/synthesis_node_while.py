@@ -74,60 +74,70 @@ class Synthesis:
         if msg.data == "1" and self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
             self.flg = "1"
+            pedicel_is_ready = False
+            i = 0
             bbox_top = 0.5
-            ripeness_threshold = 1
+            n_pixels_prop = 0.3
+            ripeness_threshold = 0.6
             pedicel_cut_prop = 0.3
-            ripeness_percentile = 0.25
-            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int)
-            for i in range(n_pedicels):
+            while not pedicel_is_ready:
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
                 this_pedicel = self.mask_pedicel[self.mask_pedicel[:,2]==i]
                 # its possible for no pedicels to be detected in an image 
                 x = this_pedicel[:,1].astype("int") # actually, better to send msg as uint32
                 y = this_pedicel[:,0].astype("int")
                 # obtain the end with smaller y value
-                x_end = this_pedicel[this_pedicel[:,0]==np.max(this_pedicel[:,0])][0,1] # index zero since there are probs multiple
-                y_end = this_pedicel[this_pedicel[:,0]==np.max(this_pedicel[:,0])][0,0] # index zero since there are probs multiple
+                xy_end = this_pedicel[this_pedicel[:,0]==np.min(this_pedicel[:,0])][0,:] # index zero since there are probs multiple
                 # if that end point is within a tomato bbox, obtain a small patch centered around the tomato mask
-                tomato_is_ripe = False
-                for j, this_tomato in enumerate(self.bbox_tomato):
-                    x_min, y_min, x_max, y_max = this_tomato[0], this_tomato[1], this_tomato[2], this_tomato[3]
-                    if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
-                        # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
-                        mask_indices = self.mask_tomato[self.mask_tomato[:,2]==j].astype(int)
-                        # probably unnecessary to reduce if just using rgb info
-                        tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]] # should be nx3
-                        r, g, b = tomato_pixels[:,0], tomato_pixels[:,1], tomato_pixels[:,2]
-                        ripeness = np.sort((r - g)/(r + g + b))
-                        lower_index = int(ripeness_percentile * len(ripeness))
-                        upper_index = int((1 - ripeness_percentile) * len(ripeness))
-                        ripeness = np.mean(ripeness[lower_index: upper_index])
-                        if ripeness < ripeness_threshold:
-                            # send this info to the manipulator  
-                            self.this_pedicel = this_pedicel
-                            index = int((1 - pedicel_cut_prop) * len(y))
-                            y_cut = np.partition(y, index)[index]
-                            # run polynomial fitting
-                            coefs = np.polyfit(y, x, 6) # fifth deg for now
-                            # predict
-                            x_pred = np.polyval(coefs, y_cut).astype("int")
-                            self.cut_point = self.xyz[y_cut, x_pred, :]
-                            res = Point32()
-                            res.x, res.y, res.z = self.cut_point[0], self.cut_point[1], self.cut_point[2]
-                            self.result_msg = res 
-#                            plt.imshow((self.depth / np.max(self.depth) * 255).astype(np.uint8), cmap="gray")
-                            plt.imshow(self.im_array)
-                            plt.plot(np.polyval(coefs, y), y, "bo", ms=0.5)
-                            plt.plot(x_pred, y_cut, "ro", ms=0.5)
-#                            plt.annotate(str(ripeness), (x_pred, y_cut))
-                            plt.savefig("images/test" + str(i) + str(j) + ".png", dpi=300)
-                            tomato_is_ripe = True
+                pedicel_has_tomato = False
+                j = 0
+                while not pedicel_has_tomato:
+                    this_tomato = self.bbox_tomato[j]
+                    x_min, y_max, x_max, y_min = this_tomato[0], this_tomato[1], this_tomato[2], this_tomato[3]
+                    if (xy_end[1] > x_min and xy_end[1] < x_max) and (xy_end[0] > bbox_top * (y_max - y_min) + y_min and xy_end[0] < y_max):
+                        pedicel_has_tomato = True
+                    j += 1
+                    if j == len(self.bbox_tomato):
+                        break
+                # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
+                if pedicel_has_tomato:
+                    mask_indices = self.mask_tomato[self.mask_tomato[:,2]==j]
+                    # probably unnecessary to reduce if just using rgb info
+                    n_pixels = round(n_pixels_prop * mask_indices.shape[0])
+                    mask_indices_reduced = np.random.choice(mask_indices, size=n_pixels, replace=False)
+                    ripeness = im_array[mask_indices_reduced[:,0], mask_indices_reduced[:,1]] # should be nx3
+                    ripeness = np.mean((ripeness[:,0] - ripeness[:,1]) / ripeness[:,0]) # using rgb info
+                    if ripeness > ripeness_threshold:
+                        pedicel_is_ready = True
+                i += 1
+                if i == np.max(self.mask_pedicel[:,2]):
+                    break
+                # probs better to use for loop with break rather than while loop
 
-#                            break
-#                if tomato_is_ripe:
-#                    break
-                
-
+                if pedicel_has_tomato and pedicel_is_ready:
+                    # send this info to the manipulator  
+                    self.this_pedicel = this_pedicel
+                    index = int(pedicel_cut_prop * len(y))
+                    y_cut = np.partition(y, index)[index]
+                    # run polynomial fitting
+#                    model = LinearRegression()
+#                    poly_features = PolynomialFeatures(degree=3)
+#                    y_poly = poly_features.fit_transform(y.reshape((-1,1)))
+#                    model.fit(y_poly, x) # y is independent, x is dependent due to curvature of pedicels
+                    
+                    coefs = np.polyfit(y, x, 6) # fifth deg for now
+                    
+                    # predict
+#                    x_pred = round(model.predict(y_cut.reshape((-1,1)))) # some point in the middle of pedicel
+                    x_pred = np.polyval(coefs, y_cut).astype("int")
+                    self.cut_point = self.xyz[y_cut, x_pred, :]
+                    res = Point32()
+                    res.x, res.y, res.z = self.cut_point[0], self.cut_point[1], self.cut_point[2]
+                    self.result_msg = res 
+#                    plt.imshow((self.depth / np.max(self.depth) * 255).astype(np.uint8), cmap="gray")
+                    plt.imshow(self.im_array)
+                    plt.plot(x_pred, y_cut, "r.", ms=0.5)
+                    plt.savefig("test.png", dpi=300)
     
 def main():
     rospy.init_node("synthesis", anonymous=True)

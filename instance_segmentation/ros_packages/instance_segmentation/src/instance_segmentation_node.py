@@ -26,7 +26,7 @@ class InstanceSegmentation:
         self.flg_topic = "stereo_matching_flg"
         self.result_topic = "instance_segmentation_output"
         self.config_file = '../cascade_mask_rcnn_r50_fpn_1x_tomato.py'
-        self.checkpoint_file = '../epoch_400.pth'
+        self.checkpoint_file = '../epoch_2000.pth'
         # output of callback methods
         self.im = None
         self.im_array = None
