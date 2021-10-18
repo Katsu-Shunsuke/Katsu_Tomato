@@ -11,7 +11,6 @@ RUN ln -s python3.8 /usr/bin/python
 RUN apt update && apt install -y python3-pip && apt install -y git
 RUN pip install mmcv-full==1.3.8 -f https://download.openmmlab.com/mmcv/dist/cu101/torch1.7.0/index.html
 RUN pip install torch==1.7.0 torchvision==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
-# requirements.txt contains numpy and cython but already satisfied so should be ok for it to be empty # echo "" > requirements/build.txt && \ 
 RUN cd && git clone https://github.com/open-mmlab/mmdetection.git && \
     cd mmdetection && \
     pip install -r requirements/build.txt && \
@@ -40,6 +39,7 @@ RUN . /opt/ros/noetic/setup.sh && \
 # 
 # RUN mkdir /root/catkin_ws/src/instance_segmentation/msg
 # COPY InstSegRes.msg /root/catkin_ws/src/instance_segmentation/msg/InstSegRes.msg
+
 COPY keep_alive.py /root/keep_alive.py
 
 COPY ros_packages/instance_segmentation /root/catkin_ws/src/instance_segmentation

@@ -23,9 +23,12 @@ services:
       - "ROS_MASTER_URI=http://ros-master:11311"
       - "ROS_HOSTNAME=dummy_camera"
 
+# this applies to all containers but for "command" safe to source and cd manually to the script directory then run script rather than use path to executable,
+# otherwise could be in the wrong cwd and code may not be able to find some stuff, etc.
+
   stereo_matching:
     image: shiotani_stereo:latest
-    command: python /root/catkin_ws/src/stereo_matching/src/stereo_matching.py
+    command: bash -c "source ~/catkin_ws/devel/setup.bash && cd /root/catkin_ws/src/stereo_matching/src/ && python stereo_matching.py"
 #    command: python /root/keep_alive.py
     depends_on:
       - ros-master
@@ -55,8 +58,8 @@ services:
 
   synthesis:
     image: shiotani_synthesis:latest
-#    command: bash -c "source ~/catkin_ws/devel/setup.bash && cd /root/catkin_ws/src/instance_segmentation/src/ && python instance_segmentation_node.py"
-    command: python /root/keep_alive.py
+    command: bash -c "source ~/catkin_ws/devel/setup.bash && cd /root/catkin_ws/src/synthesis/src/ && python synthesis_node_vector.py"
+#    command: python /root/keep_alive.py
     depends_on:
       - ros-master
     networks:

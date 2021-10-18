@@ -19,6 +19,7 @@ RUN apt update && \
 RUN ln -s python3.7 /usr/bin/python
 RUN python -m pip install torch==1.2.0 torchvision==0.4.0 -f https://download.pytorch.org/whl/torch_stable.html
 RUN python -m pip install numpy -I
+RUN python -m pip install matplotlib -I
 
 # stuffs
 RUN apt install -y tmux; apt install -y vim

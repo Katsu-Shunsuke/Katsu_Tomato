@@ -7,6 +7,7 @@ import rospy
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import interpolate
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from std_msgs.msg import String, Float32MultiArray, MultiArrayDimension, Header
@@ -105,6 +106,7 @@ class Synthesis:
                         if ripeness < ripeness_threshold:
                             # send this info to the manipulator  
                             self.this_pedicel = this_pedicel
+
                             index = int((1 - pedicel_cut_prop) * len(y))
                             y_cut = np.partition(y, index)[index]
                             # run polynomial fitting
@@ -115,6 +117,8 @@ class Synthesis:
                             res = Point32()
                             res.x, res.y, res.z = self.cut_point[0], self.cut_point[1], self.cut_point[2]
                             self.result_msg = res 
+                            # tangent vector (3D)
+
 #                            plt.imshow((self.depth / np.max(self.depth) * 255).astype(np.uint8), cmap="gray")
                             plt.imshow(self.im_array)
                             plt.plot(np.polyval(coefs, y), y, "bo", ms=0.5)

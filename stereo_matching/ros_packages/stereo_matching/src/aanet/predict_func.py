@@ -57,14 +57,16 @@ from numpy import savez_compressed
 # parser.add_argument('--save_suffix', default='pred', type=str, help='Suffix of save filename')
 # parser.add_argument('--save_dir', default='pred', type=str, help='Save prediction directory')
 
+
+# parameters currently set for aanet+ (see scripts/aanet_predict for what params to use)
 def load_aanet(img_height=544,
                img_width=960,
                seed=326,
                max_disp=192,
-               feature_type="aanet",
-               no_feature_mdconv=True,
+               feature_type="ganet",
+               no_feature_mdconv=False,
                feature_pyramid=True,
-               feature_pyramid_network=True,
+               feature_pyramid_network=False,
                feature_similarity="correlation",
                num_downsample=2,
                aggregation_type="adaptive",
@@ -75,7 +77,7 @@ def load_aanet(img_height=544,
                no_intermediate_supervision=True,
                deformable_groups=2,
                mdconv_dilation=2,
-               refinement_type="stereodrnet",
+               refinement_type="hourglass",
                pretrained_aanet=None):
 
     # For reproducibility
@@ -120,7 +122,7 @@ def load_aanet(img_height=544,
     return aanet, device
 
 
-def aanet_predict(right_array, left_array, aanet, device, refinement_type="stereodrnet"):
+def aanet_predict(right_array, left_array, aanet, device, refinement_type="hourglass"):
     # Test loader
     IMAGENET_MEAN = [0.485, 0.456, 0.406]
     IMAGENET_STD = [0.229, 0.224, 0.225]

@@ -75,3 +75,9 @@ def stereo_reconstruction(d, b=63, f=2.8):
    
     return xyz
 
+def polynomial_derivative(coefs):
+    deg = len(coefs) - 1
+    deriv_coefs = []
+    for i, poly_coef in enumerate(coefs[:-1]):
+        deriv_coefs.append(poly_coef * (deg - i))
+    return deriv_coefs
