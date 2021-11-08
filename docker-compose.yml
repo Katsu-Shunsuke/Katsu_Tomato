@@ -17,7 +17,6 @@ services:
 
   stereo_matching:
     image: stereo_matching:latest
-    # build: stereo_matching
     command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/stereo_matching/src/ && python stereo_matching.py"
     networks:
       ros:
