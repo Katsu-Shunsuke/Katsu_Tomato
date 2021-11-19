@@ -3,6 +3,7 @@
 import os
 import sys
 import rospy
+import tf
 
 import cv2
 import numpy as np
@@ -19,7 +20,7 @@ from rospy_tutorials.msg import Floats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
-from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative
+from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, rotation_matrix_from_vectors
 from synthesis.msg import InstSegRes, CutPoint # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
@@ -29,8 +30,8 @@ class Synthesis:
 #        self.flg_topic = "synthesis_flg"
         self.flg_topic = "stereo_matching_flg"
         self.result_topic = "synthesis_output"
-        self.depth_topic = "aanet_depth_output"
-        self.instseg_topic = "instance_segmentation_output"
+        self.depth_topic = "aanet_depth_array_output"
+        self.instseg_topic = "instance_segmentation_array_output"
         # output of callback methods
         self.depth = None
         self.xyz = None
@@ -47,6 +48,8 @@ class Synthesis:
         self.mask_pedicel = None
         self.mask_sepal = None
         self.this_pedicel = None
+        self.quaternion = None
+        self.translation = None
 
     def im_callback(self, msg):
         print("received image")
@@ -118,6 +121,7 @@ class Synthesis:
                             # predict
                             x_pred = np.polyval(coefs_yx, y_cut)
                             z_pred = np.polyval(coefs_yz, y_cut)
+                            # pedicel xyz position
                             cut_point = CutPoint()
                             point = Point32()
                             point.x, point.y, point.z = x_pred, y_cut, z_pred
@@ -127,38 +131,51 @@ class Synthesis:
                             deriv_coefs_yz = polynomial_derivative(coefs_yz)
                             deriv_yx = np.polyval(deriv_coefs_yx, y_cut)
                             deriv_yz = np.polyval(deriv_coefs_yz, y_cut)
-                            dir_vector = Vector3()
-                            dir_vector.x, dir_vector.y, dir_vector.z = deriv_yx, 1, deriv_yz
-                            cut_point.tangent = dir_vector
-                            # define custom message with pooint and tangent vector
-                            self.result_msg = cut_point
-                            
-                            savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
-                            x_curve = np.polyval(coefs_yx, y_glob)
-                            z_curve = np.polyval(coefs_yz, y_glob)
-                            curve = np.vstack((x_curve, y_glob, z_curve)).T
-                            savemat("to_local/point_clouds/curve" + str(j) + ".mat", {"curve": curve})
-                            savemat("to_local/point_clouds/point" + str(j) + ".mat", {"point": [x_pred, y_cut, z_pred]})
-                            mag_max = 20
                             r = np.array([deriv_yx, 1, deriv_yz])
                             r = r / np.linalg.norm(r) # unit vector
-                            t = np.array([x_pred, y_cut, z_pred])
-                            tangent_line = np.vstack([mag * r + t for mag in np.linspace(-mag_max, mag_max, 30)])
-                            savemat("to_local/point_clouds/tangent" + str(j) + ".mat", {"tangent": tangent_line})
-                            savemat("to_local/point_clouds/image.mat", {"image": self.im_array})
+                            dir_vector = Vector3()
+                            dir_vector.x, dir_vector.y, dir_vector.z = r
+                            cut_point.tangent = dir_vector
+                            # custom message with point and tangent vector
+                            self.result_msg = cut_point
+                            
+                            # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
+                            vec1 = np.array([0.0, 0.0, 1]) # camera coordinates
+#                            vec1 = np.array([0.0001, 0.0001, 1]) # camera coordinates
+                            vec2 = r # scissor coordinates
+                            rot = rotation_matrix_from_vectors(vec1, vec2)
+                            # quaternion and translation
+                            rot_eye = np.eye(4)
+                            rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
+                            self.quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
+                            self.translation = (x_pred, y_cut, z_pred)
 
-                            np.save("to_local/point_clouds/xyz.npy", self.xyz)
-                            np.save("to_local/point_clouds/curve" + str(j) + ".npy", curve)
-                            np.save("to_local/point_clouds/point" + str(j) + ".npy", [x_pred, y_cut, z_pred])
-                            np.save("to_local/point_clouds/tangent" + str(j) + ".npy", tangent_line)
-                            np.save("to_local/point_clouds/image.npy", self.im_array)
-                            
-                            plt.imshow(self.depth)
-                            plt.savefig("to_local/depth.png")
-                            
-                            np.save("to_local/xyz.npy", self.xyz)
-                            print(np.min(self.xyz[:,:,2]))
-                            print(np.max(self.xyz[:,:,2]))
+#                            # save result as matlab matrices
+#                            savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
+#                            x_curve = np.polyval(coefs_yx, y_glob)
+#                            z_curve = np.polyval(coefs_yz, y_glob)
+#                            curve = np.vstack((x_curve, y_glob, z_curve)).T
+#                            savemat("to_local/point_clouds/curve" + str(j) + ".mat", {"curve": curve})
+#                            savemat("to_local/point_clouds/point" + str(j) + ".mat", {"point": [x_pred, y_cut, z_pred]})
+#                            mag_max = 20
+#                            t = np.array([x_pred, y_cut, z_pred])
+#                            tangent_line = np.vstack([mag * r + t for mag in np.linspace(-mag_max, mag_max, 30)])
+#                            savemat("to_local/point_clouds/tangent" + str(j) + ".mat", {"tangent": tangent_line})
+#                            savemat("to_local/point_clouds/image.mat", {"image": self.im_array})
+#
+#                            # save result as numpy arrays
+#                            np.save("to_local/point_clouds/xyz.npy", self.xyz)
+#                            np.save("to_local/point_clouds/curve" + str(j) + ".npy", curve)
+#                            np.save("to_local/point_clouds/point" + str(j) + ".npy", [x_pred, y_cut, z_pred])
+#                            np.save("to_local/point_clouds/tangent" + str(j) + ".npy", tangent_line)
+#                            np.save("to_local/point_clouds/image.npy", self.im_array)
+#                            
+#                            plt.imshow(self.depth)
+#                            plt.savefig("to_local/depth.png")
+#                            
+#                            np.save("to_local/xyz.npy", self.xyz)
+#                            print(np.min(self.xyz[:,:,2]))
+#                            print(np.max(self.xyz[:,:,2]))
 
                             tomato_is_ripe = True
 
@@ -177,11 +194,14 @@ def main():
     rospy.Subscriber(synthesizer.instseg_topic, InstSegRes, synthesizer.instseg_callback)
     pub = rospy.Publisher(synthesizer.result_topic, CutPoint, queue_size=1)
 #    r = rospy.Rate(10)
+    br = tf.TransformBroadcaster()
     while not rospy.is_shutdown():
-        if synthesizer.result_msg is not None and synthesizer.flg=="1":
+        if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.flg=="1":
+#        if synthesizer.result_msg is not None and synthesizer.flg=="1":
 #            rospy.loginfo(model.result_msg)
             pub.publish(synthesizer.result_msg)
 #            r.sleep()
+            br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "test_tf", "/zedA_left_camera_optical_frame")
             synthesizer.flg = "0"
 
 #    if sm.flg == "1":

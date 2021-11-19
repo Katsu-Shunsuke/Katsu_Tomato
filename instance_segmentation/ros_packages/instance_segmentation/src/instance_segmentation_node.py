@@ -15,7 +15,7 @@ from rospy_tutorials.msg import Floats
 import mmcv
 from mmdet.apis import init_detector, inference_detector
 
-from utils import numpy_to_rosarray 
+from utils import numpy_to_rosarray, visualize_output
 from instance_segmentation.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
 
 class InstanceSegmentation:
@@ -24,7 +24,8 @@ class InstanceSegmentation:
         self.im_topic = "/zedA/zed_node_A/left/image_rect_color" # left image because disparity map is on left image.
 #        self.flg_topic = "instance_segmentation_flg"
         self.flg_topic = "stereo_matching_flg"
-        self.result_topic = "instance_segmentation_output"
+        self.result_arr_topic = "instance_segmentation_array_output"
+        self.result_im_topic = "instance_segmentation_image_output"
         self.config_file = '../cascade_mask_rcnn_r50_fpn_1x_tomato.py'
         self.checkpoint_file = '../epoch_2000.pth'
         # output of callback methods
@@ -33,12 +34,14 @@ class InstanceSegmentation:
         self.result = None
         self.maskrcnn = None
         self.flg = None
-        self.result_msg = None
+        self.result_arr_msg = None
+        self.result_im_msg = None
 
     def im_callback(self, msg):
         self.im = msg      
         cv_image = CvBridge().imgmsg_to_cv2(self.im, "bgr8")
-        self.im_array = np.array(cv_image)
+        im_rgb = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+        self.im_array = np.array(im_rgb)
     
     def main_callback(self, msg):
         if msg.data == "1" and self.im_array is not None:
@@ -47,8 +50,13 @@ class InstanceSegmentation:
                 self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
             print("running maskrcnn")
             self.result = inference_detector(self.maskrcnn, self.im_array) # list of list of array
-            self.result_msg = self.to_InstSegRes(self.result)
-    
+            self.result_arr_msg = self.to_InstSegRes(self.result)
+
+#            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=False)
+            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
+            self.result_im_msg = CvBridge().cv2_to_imgmsg(result_im, "rgb8")
+            print(result_im.shape)
+
     def to_InstSegRes(self, result):
         msg = InstSegRes()
         # bbox
@@ -82,12 +90,14 @@ def main():
     model = InstanceSegmentation()
     rospy.Subscriber(model.im_topic, Image, model.im_callback)
     rospy.Subscriber(model.flg_topic, String, model.main_callback)
-    pub = rospy.Publisher(model.result_topic, InstSegRes, queue_size=1)
+    pub_arr = rospy.Publisher(model.result_arr_topic, InstSegRes, queue_size=1)
+    pub_im = rospy.Publisher(model.result_im_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        if model.result_msg is not None and model.flg=="1":
+        if model.result_arr_msg is not None and model.result_im_msg is not None and model.flg=="1":
 #            rospy.loginfo(model.result_msg)
-            pub.publish(model.result_msg)
+            pub_arr.publish(model.result_arr_msg)
+            pub_im.publish(model.result_im_msg)
 #            r.sleep()
             model.flg = "0"
 
