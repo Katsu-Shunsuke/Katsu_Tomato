@@ -28,10 +28,12 @@ class StereoMatching:
         self.right_topic = "/zedA/zed_node_A/right/image_rect_color"
         self.left_topic = "/zedA/zed_node_A/left/image_rect_color"
         self.flg_topic = "stereo_matching_flg"
-        self.depth_topic = "aanet_depth_output"
+        self.depth_arr_topic = "aanet_depth_array_output"
+        self.depth_im_topic = "aanet_depth_image_output"
 #        self.pretrained_aanet = "aanet/pretrained/aanet_sceneflow-5aa5a24e.pth"
         self.pretrained_aanet = "aanet/pretrained/aanet+_sceneflow-d3e13ef0.pth"
-        self.in_shape = (1280, 720) # BE CAREFUL, dimensions are flipped for c2.resize()
+#        self.in_shape = (1280, 720) # BE CAREFUL, dimensions are flipped for c2.resize()
+        self.in_shape = (960, 540) # BE CAREFUL, dimensions are flipped for c2.resize()
         self.out_shape = (1920, 1080) # must be consistent with instance segmentation 
         # output of callback methods
         self.camera_name = None
@@ -43,7 +45,8 @@ class StereoMatching:
         self.aanet = None
         self.device = None
         self.flg = None
-        self.depth_msg = None
+        self.depth_arr_msg = None
+        self.depth_im_msg = None
 
     def camera_name_callback(self, msg):
         self.camera_name = msg.data
@@ -72,10 +75,19 @@ class StereoMatching:
             self.depth = cv2.resize(depth_raw, dsize=self.out_shape)
             plt.imshow(self.depth)
             plt.savefig("depth.png")
-            self.depth_msg = numpy_to_float(self.depth, "float32")
+            self.depth_arr_msg = numpy_to_float(self.depth, "float32")
             print(np.min(self.depth))
             print(np.max(self.depth))
 
+#            depth_im = Image()
+#            depth_im_array = (self.depth / np.max(self.depth) * 255).astype(np.uint8)
+#            depth_im.data = tuple(depth_im_array.flatten())
+#            depth_im.height, depth_im.width = depth_im_array.shape
+#            depth_im.step = depth_im.width
+#            self.depth_im_msg = depth_im
+
+            depth_im_array = (self.depth / np.max(self.depth) * (2**16 - 1)).astype(np.uint16)
+            self.depth_im_msg = CvBridge().cv2_to_imgmsg(depth_im_array, "mono16")
         
 
 
@@ -86,11 +98,13 @@ def main():
     rospy.Subscriber(sm.right_topic, Image, sm.right_callback)
     rospy.Subscriber(sm.left_topic, Image, sm.left_callback)
     rospy.Subscriber(sm.flg_topic, String, sm.main_callback)
-    pub = rospy.Publisher(sm.depth_topic, Float32MultiArray, queue_size=1)
+    pub_depth_arr = rospy.Publisher(sm.depth_arr_topic, Float32MultiArray, queue_size=1)
+    pub_depth_im = rospy.Publisher(sm.depth_im_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        if sm.depth_msg is not None and sm.flg=="1":
-            pub.publish(sm.depth_msg)
+        if sm.depth_arr_msg is not None and sm.depth_im_msg is not None and sm.flg=="1":
+            pub_depth_arr.publish(sm.depth_arr_msg)
+            pub_depth_im.publish(sm.depth_im_msg)
 #            r.sleep()
             sm.flg = "0"
 
