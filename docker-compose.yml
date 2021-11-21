@@ -5,8 +5,8 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.21.0.0/16
-          gateway: 172.21.0.1
+        - subnet: ${NETWORK_SUBNET}
+          gateway: ${NETWORK_IP}
 
 services:
   dummy_camera:
