@@ -1,6 +1,9 @@
 import rospy
-from std_msgs.msg import Float32MultiArray, UInt8MultiArray, MultiArrayDimension
+from std_msgs.msg import Header, Float32MultiArray, UInt8MultiArray, MultiArrayDimension
+from sensor_msgs.msg import PointCloud2, PointField
+import sensor_msgs.point_cloud2 as pc2
 
+import struct
 import numpy as np
 
 # def numpy_to_float32(array):
@@ -98,3 +101,116 @@ def rotation_matrix_from_vectors(vec1, vec2):
         return np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
     else:
         return np.eye(3) #cross of all zeros only occurs on identical directions
+
+# def generate_pc2_message(xyz, rgb):
+#     header = Header(frame_id="/zedA_left_camera_optical_frame")
+#     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='rgb', offset=12, datatype=PointField.UINT32, count=1)]
+#  
+#     assert(xyz.shape == rgb.shape)
+#     xyz = xyz.reshape((-1, 3))
+#     rgb = rgb.reshape((-1, 3))
+#     print(xyz.shape)
+#     print(rgb.shape)
+# 
+#     points = [[0.3, 0.0, 0.0, 0xff0000],
+#               [0.0, 0.3, 0.0, 0x00ff00],
+#               [0.0, 0.0, 0.3, 0x0000ff]]
+#  
+#     point_cloud = pc2.create_cloud(header, fields, points)
+#  
+#     return point_cloud
+
+
+
+# def generate_pc2_message(xyz, rgb):
+#     header = Header(frame_id="/zedA_left_camera_optical_frame")
+#     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='rgb', offset=12, datatype=PointField.UINT32, count=1)]
+#  
+#     assert(xyz.shape == rgb.shape)
+#     xyz = xyz.reshape((-1, 3))
+#     rgb = rgb.reshape((-1, 3))
+# 
+#     hex_color = []
+#     for i in rgb:
+#         r, g, b = i
+#         a = 255
+#         rgb = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
+#         hex_color.append(rgb)
+#         print(rgb)
+# 
+#     hex_color = np.array(hex_color).reshape((-1, 1))
+#     points = list(np.hstack((xyz, hex_color)))
+#     print(points)
+#  
+#     points = [[0.3, 0.0, 0.0, 0xff0000],
+#               [0.0, 0.3, 0.0, 0x00ff00],
+#               [0.0, 0.0, 0.3, 0x0000ff]]
+#  
+#     point_cloud = pc2.create_cloud(header, fields, points)
+#  
+#     return point_cloud
+
+
+def generate_pc2_message(xyz, rgb):
+    header = Header(frame_id="/zedA_left_camera_optical_frame")
+    fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+              PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+              PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+              PointField(name='rgb', offset=12, datatype=PointField.UINT32, count=1)]
+ 
+    assert(xyz.shape == rgb.shape)
+    xyz = xyz.reshape((-1, 3))
+    rgb = rgb.reshape((-1, 3))
+    size = round(0.1 * xyz.shape[0])
+    idx = np.random.randint(xyz.shape[0], size=size)
+    xyz = xyz[idx, :] * 10**(-3) # mm to m
+    rgb = rgb[idx, :]
+
+    points = xyz.tolist()
+    for i, ting in enumerate(rgb):
+        r, g, b = ting
+        color = '0x%02x%02x%02x' % (r, g, b)
+        color = int(color, 16)
+        points[i].append(color)
+ 
+    point_cloud = pc2.create_cloud(header, fields, points)
+ 
+    return point_cloud
+
+# def generate_pc2_message(xyz, rgb):
+#     header = Header(frame_id="/zedA_left_camera_optical_frame")
+#     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+#               PointField(name='rgb', offset=12, datatype=PointField.UINT32, count=1)]
+#  
+#     assert(xyz.shape == rgb.shape)
+#     xyz = xyz.reshape((-1, 3))
+#     rgb = rgb.reshape((-1, 3))
+#     hex_color = np.array([0xff0000] * xyz.shape[0]).reshape((-1,1))
+# 
+#     points = list(np.hstack((xyz, hex_color)))
+#     print(points)
+#  
+#     point_cloud = pc2.create_cloud(header, fields, points)
+#  
+#     return point_cloud
+
+def Color(red, green, blue, white = 0):
+    """Convert the provided red, green, blue color to a 24-bit color value.
+    Each color component should be a value 0-255 where 0 is the lowest intensity
+    and 255 is the highest intensity.
+    """
+    return (white << 24) | (red << 16)| (green << 8) | blue
+
+
+
+
+
+

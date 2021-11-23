@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy.io import savemat
 from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, PointCloud2
 from std_msgs.msg import String, Float32MultiArray, Float64MultiArray, MultiArrayDimension, Header
 from geometry_msgs.msg import Point32, Vector3
 from rospy.numpy_msg import numpy_msg
@@ -20,7 +20,7 @@ from rospy_tutorials.msg import Floats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
-from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, rotation_matrix_from_vectors
+from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, rotation_matrix_from_vectors, generate_pc2_message
 from synthesis.msg import InstSegRes, CutPoint # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
@@ -32,6 +32,7 @@ class Synthesis:
         self.result_topic = "synthesis_output"
         self.depth_topic = "aanet_depth_array_output"
         self.instseg_topic = "instance_segmentation_array_output"
+        self.pc2_topic = "instance_segmentation_pc2_output"
         # output of callback methods
         self.depth = None
         self.xyz = None
@@ -50,6 +51,7 @@ class Synthesis:
         self.this_pedicel = None
         self.quaternion = None
         self.translation = None
+        self.point_cloud = None
 
     def im_callback(self, msg):
         print("received image")
@@ -140,15 +142,17 @@ class Synthesis:
                             self.result_msg = cut_point
                             
                             # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
-                            vec1 = np.array([0.0, 0.0, 1]) # camera coordinates
-#                            vec1 = np.array([0.0001, 0.0001, 1]) # camera coordinates
+                            vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                             vec2 = r # scissor coordinates
                             rot = rotation_matrix_from_vectors(vec1, vec2)
                             # quaternion and translation
                             rot_eye = np.eye(4)
                             rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
-                            self.quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
-                            self.translation = (x_pred, y_cut, z_pred)
+                            self.quaternion = tf.transformations.quaternion_from_matrix(rot_eye) # no need to convert for quaternion because its just direction
+                            self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
+
+                            # publish test pointcloud2 message
+                            self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
 #                            # save result as matlab matrices
 #                            savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
@@ -192,14 +196,16 @@ def main():
     rospy.Subscriber(synthesizer.flg_topic, String, synthesizer.main_callback)
     rospy.Subscriber(synthesizer.depth_topic, Float32MultiArray, synthesizer.depth_callback)
     rospy.Subscriber(synthesizer.instseg_topic, InstSegRes, synthesizer.instseg_callback)
-    pub = rospy.Publisher(synthesizer.result_topic, CutPoint, queue_size=1)
+    pub_cutpoint = rospy.Publisher(synthesizer.result_topic, CutPoint, queue_size=1)
+    pub_pointcloud = rospy.Publisher(synthesizer.pc2_topic, PointCloud2, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
     while not rospy.is_shutdown():
-        if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.flg=="1":
+        if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.point_cloud is not None and synthesizer.flg=="1":
 #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
 #            rospy.loginfo(model.result_msg)
-            pub.publish(synthesizer.result_msg)
+            pub_cutpoint.publish(synthesizer.result_msg)
+            pub_pointcloud.publish(synthesizer.point_cloud)
 #            r.sleep()
             br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "test_tf", "/zedA_left_camera_optical_frame")
             synthesizer.flg = "0"
