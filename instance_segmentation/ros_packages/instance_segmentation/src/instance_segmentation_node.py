@@ -40,8 +40,9 @@ class InstanceSegmentation:
     def im_callback(self, msg):
         self.im = msg      
         cv_image = CvBridge().imgmsg_to_cv2(self.im, "bgr8")
-        im_rgb = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-        self.im_array = np.array(im_rgb)
+#        im_rgb = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+#        self.im_array = np.array(im_rgb)
+        self.im_array = np.array(cv_image) #mmdetection model was trined in bgr not rgb!!!!
     
     def main_callback(self, msg):
         if msg.data == "1" and self.im_array is not None:

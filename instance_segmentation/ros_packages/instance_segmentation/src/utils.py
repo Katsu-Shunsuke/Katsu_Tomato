@@ -73,12 +73,12 @@ def get_img_from_fig(fig, dpi=180):
     return img
 
 def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=False):
-    # image should be numpy array
+    # image should be numpy array (bgr)
     # result should be the output of inference_detector
     fig = plt.figure(figsize=(25,15))
     ax = fig.add_subplot(111)
 
-    ax.imshow(image)
+    ax.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     # bbox
     c = ["r", "c", "m", "y"]
     classes = ["stem", "tomato", "pedicel", "sepal"]
