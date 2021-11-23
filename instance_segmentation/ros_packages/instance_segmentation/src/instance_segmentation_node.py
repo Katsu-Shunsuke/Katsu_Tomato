@@ -64,11 +64,11 @@ class InstanceSegmentation:
         msg.bbox_tomato = numpy_to_rosarray(self.result[0][1], "float32")
         msg.bbox_pedicel = numpy_to_rosarray(self.result[0][2], "float32")
         msg.bbox_sepal = numpy_to_rosarray(self.result[0][3], "float32")
-        # mask
-        i_stem  = np.transpose(np.nonzero(np.dstack(self.result[1][0])))
-        i_tomato = np.transpose(np.nonzero(np.dstack(self.result[1][1])))
-        i_pedicel = np.transpose(np.nonzero(np.dstack(self.result[1][2])))
-        i_sepal = np.transpose(np.nonzero(np.dstack(self.result[1][3])))
+        # mask - need to consider the case when no instance is detected and hence cannot concatenate
+        i_stem  = np.transpose(np.nonzero(np.dstack(self.result[1][0]) if self.result[1][0] else []))
+        i_tomato = np.transpose(np.nonzero(np.dstack(self.result[1][1]) if self.result[1][1] else []))
+        i_pedicel = np.transpose(np.nonzero(np.dstack(self.result[1][2]) if self.result[1][2] else []))
+        i_sepal = np.transpose(np.nonzero(np.dstack(self.result[1][3]) if self.result[1][3] else []))
         msg.mask_stem = numpy_to_rosarray(i_stem, "float32")
         msg.mask_tomato = numpy_to_rosarray(i_tomato, "float32")
         msg.mask_pedicel = numpy_to_rosarray(i_pedicel, "float32")

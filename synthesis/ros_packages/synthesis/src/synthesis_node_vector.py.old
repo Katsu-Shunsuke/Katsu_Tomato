@@ -29,10 +29,10 @@ class Synthesis:
         self.im_topic = "/zedA/zed_node_A/left/image_rect_color" # left image because disparity map is on left image.
 #        self.flg_topic = "synthesis_flg"
         self.flg_topic = "stereo_matching_flg"
-        self.result_topic = "synthesis_output"
+        self.result_topic = "synthesis_cutpoint_output"
         self.depth_topic = "aanet_depth_array_output"
         self.instseg_topic = "instance_segmentation_array_output"
-        self.pc2_topic = "instance_segmentation_pc2_output"
+        self.pc2_topic = "synthesis_pc2_output"
         # output of callback methods
         self.depth = None
         self.xyz = None
@@ -85,11 +85,7 @@ class Synthesis:
             pedicel_cut_prop = 0.3
             ripeness_percentile = 0.25
             deg = 5
-            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) if self.mask_pedicel.size else 0
-            
-            # publish test pointcloud2 message
-            self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
-
+            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int)
             for i in range(n_pedicels):
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
                 this_pedicel = self.mask_pedicel[self.mask_pedicel[:,2]==i]
@@ -155,6 +151,8 @@ class Synthesis:
                             self.quaternion = tf.transformations.quaternion_from_matrix(rot_eye) # no need to convert for quaternion because its just direction
                             self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
 
+                            # publish test pointcloud2 message
+                            self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
 #                            # save result as matlab matrices
 #                            savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
@@ -188,7 +186,6 @@ class Synthesis:
 #                            break
 #                if tomato_is_ripe:
 #                    break
-
                 
 
     
@@ -212,10 +209,6 @@ def main():
 #            r.sleep()
             br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "test_tf", "/zedA_left_camera_optical_frame")
             synthesizer.flg = "0"
-        if synthesizer.point_cloud is not None and synthesizer.flg=="1":
-            pub_pointcloud.publish(synthesizer.point_cloud)
-            synthesizer.flg = "0"
-
 
 #    if sm.flg == "1":
 #        pub.publish(sm.depth)
