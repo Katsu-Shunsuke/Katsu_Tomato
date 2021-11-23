@@ -29,10 +29,10 @@ class Synthesis:
         self.im_topic = "/zedA/zed_node_A/left/image_rect_color" # left image because disparity map is on left image.
 #        self.flg_topic = "synthesis_flg"
         self.flg_topic = "stereo_matching_flg"
-        self.result_topic = "synthesis_output"
+        self.result_topic = "synthesis_cutpoint_output"
         self.depth_topic = "aanet_depth_array_output"
         self.instseg_topic = "instance_segmentation_array_output"
-        self.pc2_topic = "instance_segmentation_pc2_output"
+        self.pc2_topic = "synthesis_pc2_output"
         # output of callback methods
         self.depth = None
         self.xyz = None
