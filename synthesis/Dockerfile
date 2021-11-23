@@ -20,7 +20,6 @@ RUN . /opt/ros/noetic/setup.sh && \
 COPY keep_alive.py /root/keep_alive.py
 
 COPY ros_packages/synthesis /root/catkin_ws/src/synthesis
-COPY ros_packages/dummy_camera /root/catkin_ws/src/dummy_camera
 
 RUN . /opt/ros/noetic/setup.sh && cd ~/catkin_ws && catkin_make -DCMAKE_BUILD_TYPE=Release
 
