@@ -18,9 +18,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 <launch>
     <!-- Camera Model and Name -->
-    <arg name="camera_name"           default="zedA" /> <!-- The name you want -->
+    <arg name="camera_name"           default="zedm" /> <!-- The name you want -->
     <arg name="camera_model"          default="zedm" /> <!-- 'zed' or 'zedm' or 'zed2' -->
-    <arg name="node_name"             default="zed_node_A" />
+    <arg name="node_name"             default="zed_node" />
     <arg name="resolution"            default="1" /> <!-- 0, 1, or 2 -->
     <arg name="brightness"            default="4" />
     <arg name="exposure"              default="100" />

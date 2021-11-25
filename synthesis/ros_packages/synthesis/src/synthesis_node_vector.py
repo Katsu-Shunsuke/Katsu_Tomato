@@ -26,7 +26,7 @@ from synthesis.msg import InstSegRes, CutPoint # need to edit CMakeLists.txt and
 class Synthesis:
     def __init__(self):
         # topics to subscribe and publish to
-        self.im_topic = "/zedA/zed_node_A/left/image_rect_color" # left image because disparity map is on left image.
+        self.im_topic = "/zedm/zed_node/left/image_rect_color" # left image because disparity map is on left image.
 #        self.flg_topic = "synthesis_flg"
         self.flg_topic = "stereo_matching_flg"
         self.result_topic = "synthesis_cutpoint_output"
@@ -210,7 +210,7 @@ def main():
             pub_cutpoint.publish(synthesizer.result_msg)
             pub_pointcloud.publish(synthesizer.point_cloud)
 #            r.sleep()
-            br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "test_tf", "/zedA_left_camera_optical_frame")
+            br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "test_tf", "/zedm_left_camera_optical_frame")
             synthesizer.flg = "0"
         if synthesizer.point_cloud is not None and synthesizer.flg=="1":
             pub_pointcloud.publish(synthesizer.point_cloud)
