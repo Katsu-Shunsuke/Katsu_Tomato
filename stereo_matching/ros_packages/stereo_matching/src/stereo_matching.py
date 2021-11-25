@@ -34,7 +34,6 @@ class StereoMatching:
         self.pretrained_aanet = "aanet/pretrained/aanet+_sceneflow-d3e13ef0.pth"
 #        self.in_shape = (1280, 720) # BE CAREFUL, dimensions are flipped for c2.resize()
         self.in_shape = (960, 540) # BE CAREFUL, dimensions are flipped for c2.resize()
-        self.out_shape = (1920, 1080) # must be consistent with instance segmentation 
         # output of callback methods
         self.camera_name = None
         self.im_right = None
@@ -72,7 +71,7 @@ class StereoMatching:
                 self.aanet, self.device = load_aanet(pretrained_aanet=self.pretrained_aanet)
             print("running aanet")
             depth_raw = aanet_predict(self.array_right, self.array_left, self.aanet, self.device).astype(np.float32) # to publish as array has to be float32 for some reason
-            self.depth = cv2.resize(depth_raw, dsize=self.out_shape)
+            self.depth = cv2.resize(depth_raw, dsize=(self.im_left.width, self.im_left.height))
             plt.imshow(self.depth)
             plt.savefig("depth.png")
             self.depth_arr_msg = numpy_to_float(self.depth, "float32")
