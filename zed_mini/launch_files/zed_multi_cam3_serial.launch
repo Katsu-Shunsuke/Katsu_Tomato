@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<!--
+Copyright (c) 2020, STEREOLABS.
+
+All rights reserved.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<launch>
+    <arg name="publish_urdf"         default="true" />
+
+    <!-- CAMERA 1 -->
+    <arg name="node_name_1"          default="zed_node_A" />
+    <arg name="camera_model_1"       default="zedm" />    
+    <arg name="camera_name_1"        default="zedA" />
+    <arg name="cam_pos_x_1"          default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pos_y_1"          default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pos_z_1"          default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) -->
+    <arg name="cam_roll_1"           default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pitch_1"          default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_yaw_1"            default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="serial_number_1"      default="11252644" />
+
+    <!-- CAMERA 2 -->
+    <arg name="node_name_2"          default="zed_node_B" />
+    <arg name="camera_model_2"       default="zedm" />
+    <arg name="camera_name_2"        default="zedB" />
+    <arg name="cam_pos_x_2"          default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) NEED TO CHANGE!!! -->
+    <arg name="cam_pos_y_2"          default="-0.28" /> <!-- Position respect to base frame (i.e. "base_link) NEED TO CHANGE!!! -->
+    <arg name="cam_pos_z_2"          default="-0.04" /> <!-- Position respect to base frame (i.e. "base_link) NEED TO CHANGE!!! -->
+    <arg name="cam_roll_2"           default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pitch_2"          default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_yaw_2"            default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="serial_number_2"      default="19603739" />
+
+    <!-- CAMERA 3 -->
+    <arg name="node_name_3"          default="zed_node_C" />
+    <arg name="camera_model_3"       default="zedm" />
+    <arg name="camera_name_3"        default="zedC" />
+    <arg name="cam_pos_x_3"          default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) NEED TO CHANGE!!! -->
+    <arg name="cam_pos_y_3"          default="-0.28" /> <!-- Position respect to base frame (i.e. "base_link) NEED TO CHANGE!!! -->
+    <arg name="cam_pos_z_3"          default="-0.04" /> <!-- Position respect to base frame (i.e. "base_link) NEED TO CHANGE!!! -->
+    <arg name="cam_roll_3"           default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pitch_3"          default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_yaw_3"            default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="serial_number_3"      default="19481244" />
+    
+
+    <group ns="$(arg camera_name_1)">
+        <include file="$(find zed_wrapper)/launch/zed_camera_mod_serial.launch">
+            <arg name="camera_name"         value="$(arg camera_name_1)" />
+            <arg name="node_name"           value="$(arg node_name_1)" />
+            <arg name="camera_model"        value="$(arg camera_model_1)" />
+            <arg name="publish_urdf"        value="$(arg publish_urdf)" />
+            <arg name="publish_tf"          value="true" />
+            <arg name="camera_id"           value="0" />
+            <arg name="serial_number"       value="$(arg serial_number_1)" />
+        </include>
+    </group>
+
+    <group ns="$(arg camera_name_2)">
+        <include file="$(find zed_wrapper)/launch/zed_camera_mod_serial.launch">
+            <arg name="camera_name"         value="$(arg camera_name_2)" />
+            <arg name="node_name"           value="$(arg node_name_2)" />
+            <arg name="camera_model"        value="$(arg camera_model_2)" />
+            <arg name="publish_urdf"        value="true" />
+            <arg name="publish_tf"          value="false" /> <!-- Only the main camera must publish TF! -->
+            <arg name="camera_id"           value="1" />
+
+            <arg name="cam_pos_x"         value="$(arg cam_pos_x_2)" />
+            <arg name="cam_pos_y"         value="$(arg cam_pos_y_2)" />
+            <arg name="cam_pos_z"         value="$(arg cam_pos_z_2)" />
+            <arg name="cam_roll"          value="$(arg cam_roll_2)" />
+            <arg name="cam_pitch"         value="$(arg cam_pitch_2)" />
+            <arg name="cam_yaw"           value="$(arg cam_yaw_2)" />
+            <arg name="serial_number"     value="$(arg serial_number_2)" />
+        </include>
+    </group>
+
+    <group ns="$(arg camera_name_3)">
+        <include file="$(find zed_wrapper)/launch/zed_camera_mod_serial.launch">
+            <arg name="camera_name"         value="$(arg camera_name_3)" />
+            <arg name="node_name"           value="$(arg node_name_3)" />
+            <arg name="camera_model"        value="$(arg camera_model_3)" />
+            <arg name="publish_urdf"        value="true" />
+            <arg name="publish_tf"          value="false" /> <!-- Only the main camera must publish TF! -->
+            <arg name="camera_id"           value="2" />
+
+            <arg name="cam_pos_x"         value="$(arg cam_pos_x_3)" />
+            <arg name="cam_pos_y"         value="$(arg cam_pos_y_3)" />
+            <arg name="cam_pos_z"         value="$(arg cam_pos_z_3)" />
+            <arg name="cam_roll"          value="$(arg cam_roll_3)" />
+            <arg name="cam_pitch"         value="$(arg cam_pitch_3)" />
+            <arg name="cam_yaw"           value="$(arg cam_yaw_3)" />
+            <arg name="serial_number"     value="$(arg serial_number_3)" />
+        </include>
+    </group>
+
+<!-- Launch rivz display -->
+    <!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find zed_multicamera_example)/rviz/multi_cam.rviz" output="screen" /-->
+</launch>

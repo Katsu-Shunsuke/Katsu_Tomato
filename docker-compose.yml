@@ -3,11 +3,16 @@ version: "2.3"
 networks:
   ros:
     driver: bridge
+    ipam:
+      config:
+        - subnet: ${NETWORK_SUBNET}
+          gateway: ${NETWORK_IP}
 
 services:
   dummy_camera:
     image: stereo_matching:latest
     command: bash /root/catkin_ws/src/dummy_camera/src/dummy_camera.sh
+#    command: python /root/keep_alive.py
     networks:
       ros:
         ipv4_address: ${DUMMY_CAMERA_IP}
@@ -18,6 +23,7 @@ services:
   stereo_matching:
     image: stereo_matching:latest
     command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/stereo_matching/src/ && python stereo_matching.py"
+#    command: python /root/keep_alive.py
     networks:
       ros:
         ipv4_address: ${STEREO_MATCHING_IP}
@@ -31,6 +37,7 @@ services:
   instance_segmentation:
     image: instance_segmentation:latest
     command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/instance_segmentation/src/ && python instance_segmentation_node.py"
+#    command: python /root/keep_alive.py
     networks:
       ros:
         ipv4_address: ${INSTANCE_SEGMENTATION_IP}
@@ -44,9 +51,26 @@ services:
   synthesis:
     image: synthesis:latest
     command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/synthesis/src/ && python synthesis_node_vector.py"
+#    command: python /root/keep_alive.py
     networks:
       ros:
         ipv4_address: ${SYNTHESIS_IP}
     environment:
       - "ROS_HOSTNAME=${SYNTHESIS_IP}"
       - "ROS_MASTER_URI=http://${HOST_IP}:11311"
+
+#   zed_mini:
+#     image: zed_mini:latest
+# #    command: bash -c "source /opt/ros_ws/devel/setup.bash && cd /opt/ros_ws/ && roslaunch zed_wrapper zed_multi_cam3_serial.launch"
+#     command: bash /root/launch_camera.sh
+# #    command: python /root/keep_alive.py
+#     networks:
+#       ros:
+#         ipv4_address: ${ZED_MINI_IP}
+#     runtime: nvidia
+#     environment:
+#       - NVIDIA_VISIBLE_DEVICES=all
+#       - NVIDIA_DRIVER_CAPABILITIES=compute,video
+#       - "ROS_HOSTNAME=${ZED_MINI_IP}"
+#       - "ROS_MASTER_URI=http://${HOST_IP}:11311"
+#     privileged: true
