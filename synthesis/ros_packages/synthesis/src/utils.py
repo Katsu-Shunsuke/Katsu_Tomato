@@ -175,7 +175,7 @@ def rotation_matrix_from_vectors(vec1, vec2):
 
 
 def generate_pc2_message(xyz, rgb):
-    header = Header(frame_id="/zedA_left_camera_optical_frame")
+    header = Header(frame_id="/zedm_left_camera_optical_frame")
     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
               PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
