@@ -21,7 +21,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
 from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, rotation_matrix_from_vectors, generate_pc2_message
-from synthesis.msg import InstSegRes, CutPoint # need to edit CMakeLists.txt and package.xml
+from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
     def __init__(self):
@@ -33,6 +33,7 @@ class Synthesis:
         self.depth_topic = "aanet_depth_array_output"
         self.instseg_topic = "instance_segmentation_array_output"
         self.pc2_topic = "synthesis_pc2_output"
+        self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         # output of callback methods
         self.depth = None
         self.xyz = None
@@ -77,9 +78,8 @@ class Synthesis:
         self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
 
     def main_callback(self, msg):
-        if msg.data == "1" and self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
+        if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
-            self.flg = "1"
             bbox_top = 0.5
             ripeness_threshold = 1
             pedicel_cut_prop = 0.3
@@ -188,7 +188,8 @@ class Synthesis:
 #                            break
 #                if tomato_is_ripe:
 #                    break
-
+        
+        self.flg = msg.data
                 
 
     
@@ -203,17 +204,27 @@ def main():
     pub_pointcloud = rospy.Publisher(synthesizer.pc2_topic, PointCloud2, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
+    exit_code = ExitCode()
     while not rospy.is_shutdown():
-        if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.point_cloud is not None and synthesizer.flg=="1":
-#        if synthesizer.result_msg is not None and synthesizer.flg=="1":
-#            rospy.loginfo(model.result_msg)
-            pub_cutpoint.publish(synthesizer.result_msg)
-            pub_pointcloud.publish(synthesizer.point_cloud)
-#            r.sleep()
-            br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "test_tf", "/zedm_left_camera_optical_frame")
-            synthesizer.flg = "0"
-        if synthesizer.point_cloud is not None and synthesizer.flg=="1":
-            pub_pointcloud.publish(synthesizer.point_cloud)
+        if synthesizer.flg=="1":
+            if synthesizer.point_cloud is not None:
+                pub_pointcloud.publish(synthesizer.point_cloud)
+
+                if synthesizer.quaternion is not None and synthesizer.translation is not None:
+        #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
+        #            rospy.loginfo(model.result_msg)
+                    pub_cutpoint.publish(synthesizer.result_msg)
+                    pub_pointcloud.publish(synthesizer.point_cloud)
+        #            r.sleep()
+                    br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicle", "/zedm_left_camera_optical_frame")
+                    exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_SUCCESS
+                    synthesizer.exit_code_pub.publish(exit_code)
+                
+            else:
+                rospy.loginfo("pedicle is not detected.")
+                exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_FAILED
+                synthesizer.exit_code_pub.publish(exit_code)
+            
             synthesizer.flg = "0"
 
 
