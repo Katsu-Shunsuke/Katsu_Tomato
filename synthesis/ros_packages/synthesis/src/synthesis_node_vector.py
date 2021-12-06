@@ -56,7 +56,6 @@ class Synthesis:
         self.instseg_finished = False
         self.sm_finished = False
 
-
     def im_callback(self, msg):
         print("received image")
         cv_image = CvBridge().imgmsg_to_cv2(msg, "bgr8")
@@ -86,7 +85,7 @@ class Synthesis:
         if msg.data == "1":
             self.flg = "1"
 
-    def main_callback(self, msg):
+    def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
             bbox_top = 0.5

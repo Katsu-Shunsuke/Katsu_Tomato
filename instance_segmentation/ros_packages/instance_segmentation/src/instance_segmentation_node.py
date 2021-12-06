@@ -44,19 +44,17 @@ class InstanceSegmentation:
 #        self.im_array = np.array(im_rgb)
         self.im_array = np.array(cv_image) #mmdetection model was trined in bgr not rgb!!!!
     
-    def main_callback(self, msg):
-        if msg.data == "1" and self.im_array is not None:
-            self.flg = "1"
-            if self.maskrcnn is None:
-                self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
-            print("running maskrcnn")
-            self.result = inference_detector(self.maskrcnn, self.im_array) # list of list of array
-            self.result_arr_msg = self.to_InstSegRes(self.result)
+    def main_callback(self):
+        if self.maskrcnn is None:
+            self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
+        print("running maskrcnn")
+        self.result = inference_detector(self.maskrcnn, self.im_array) # list of list of array
+        self.result_arr_msg = self.to_InstSegRes(self.result)
 
 #            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=False)
-            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
-            self.result_im_msg = CvBridge().cv2_to_imgmsg(result_im, "rgb8")
-            print(result_im.shape)
+        result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
+        self.result_im_msg = CvBridge().cv2_to_imgmsg(result_im, "rgb8")
+        print(result_im.shape)
 
     def update_flg(self, msg):
         if msg.data == "1" and self.im_array is not None:

@@ -18,7 +18,7 @@ sys.path.append("/root/catkin_ws/src/stereo_matching/src/aanet")
 from aanet import load_aanet, aanet_predict
 
 from ros_utils import numpy_to_float
-from stereo_matching.msg import ExitCode
+# from stereo_matching.msg import ExitCode
 
 class StereoMatching:
     def __init__(self):
@@ -70,7 +70,7 @@ class StereoMatching:
         if msg.data == "1" and self.array_right is not None and self.array_left is not None:
             self.flg = "1"
     
-    def main_callback(self, msg):
+    def main_callback(self):
         if self.aanet is None or self.device is None:
             self.aanet, self.device = load_aanet(pretrained_aanet=self.pretrained_aanet)
         print("running aanet")
@@ -108,14 +108,14 @@ def main():
     while not rospy.is_shutdown():
         if sm.flg == "1":
             sm.main_callback()
-            if sm.depth_arr_msg is not None and sm.depth_im_msg is not None and sm.flg=="1":
+            if sm.depth_arr_msg is not None and sm.depth_im_msg is not None:
                 pub_depth_arr.publish(sm.depth_arr_msg)
                 pub_depth_im.publish(sm.depth_im_msg)
 #            r.sleep()
-            else:
-                rospy.loginfo("Stereo matching is failed.")
-                exit_code.exit_code = ExitCode.CODE_PEDICLE_STEREO_MATCHING_FAILED
-                sm.exit_code_pub.publish(exit_code)
+            # else:
+            #     rospy.loginfo("Stereo matching is failed.")
+            #     exit_code.exit_code = ExitCode.CODE_PEDICLE_STEREO_MATCHING_FAILED
+            #     sm.exit_code_pub.publish(exit_code)
             sm.flg = "0"
 
 #    if sm.flg == "1":
