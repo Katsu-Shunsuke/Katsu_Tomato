@@ -18,7 +18,7 @@ sys.path.append("/root/catkin_ws/src/stereo_matching/src/aanet")
 from aanet import load_aanet, aanet_predict
 
 from ros_utils import numpy_to_float
-from synthesis.msg import ExitCode
+from stereo_matching.msg import ExitCode
 
 class StereoMatching:
     def __init__(self):

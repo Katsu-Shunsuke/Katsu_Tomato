@@ -16,9 +16,7 @@ import mmcv
 from mmdet.apis import init_detector, inference_detector
 
 from utils import numpy_to_rosarray, visualize_output
-from instance_segmentation.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
-from synthesis.msg import ExitCode
-
+from instance_segmentation.msg import InstSegRes, ExitCode # need to edit CMakeLists.txt and package.xml
 class InstanceSegmentation:
     def __init__(self):
         # topics to subscribe and publish to
