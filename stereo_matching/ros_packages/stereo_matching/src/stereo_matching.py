@@ -18,6 +18,7 @@ sys.path.append("/root/catkin_ws/src/stereo_matching/src/aanet")
 from aanet import load_aanet, aanet_predict
 
 from ros_utils import numpy_to_float
+from synthesis.msg import ExitCode
 
 class StereoMatching:
     def __init__(self):
@@ -46,6 +47,7 @@ class StereoMatching:
         self.flg = None
         self.depth_arr_msg = None
         self.depth_im_msg = None
+        self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
 
     def camera_name_callback(self, msg):
         self.camera_name = msg.data
@@ -63,20 +65,22 @@ class StereoMatching:
         im_rgb = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
         im_resized = cv2.resize(im_rgb, dsize=self.in_shape)
         self.array_left = np.array(im_resized)
-    
-    def main_callback(self, msg):
+
+    def update_flg(self, msg):
         if msg.data == "1" and self.array_right is not None and self.array_left is not None:
             self.flg = "1"
-            if self.aanet is None or self.device is None:
-                self.aanet, self.device = load_aanet(pretrained_aanet=self.pretrained_aanet)
-            print("running aanet")
-            depth_raw = aanet_predict(self.array_right, self.array_left, self.aanet, self.device).astype(np.float32) # to publish as array has to be float32 for some reason
-            self.depth = cv2.resize(depth_raw, dsize=(self.im_left.width, self.im_left.height))
-            plt.imshow(self.depth)
-            plt.savefig("depth.png")
-            self.depth_arr_msg = numpy_to_float(self.depth, "float32")
-            print(np.min(self.depth))
-            print(np.max(self.depth))
+    
+    def main_callback(self, msg):
+        if self.aanet is None or self.device is None:
+            self.aanet, self.device = load_aanet(pretrained_aanet=self.pretrained_aanet)
+        print("running aanet")
+        depth_raw = aanet_predict(self.array_right, self.array_left, self.aanet, self.device).astype(np.float32) # to publish as array has to be float32 for some reason
+        self.depth = cv2.resize(depth_raw, dsize=(self.im_left.width, self.im_left.height))
+        plt.imshow(self.depth)
+        plt.savefig("depth.png")
+        self.depth_arr_msg = numpy_to_float(self.depth, "float32")
+        print(np.min(self.depth))
+        print(np.max(self.depth))
 
 #            depth_im = Image()
 #            depth_im_array = (self.depth / np.max(self.depth) * 255).astype(np.uint8)
@@ -85,8 +89,8 @@ class StereoMatching:
 #            depth_im.step = depth_im.width
 #            self.depth_im_msg = depth_im
 
-            depth_im_array = (self.depth / np.max(self.depth) * (2**16 - 1)).astype(np.uint16)
-            self.depth_im_msg = CvBridge().cv2_to_imgmsg(depth_im_array, "mono16")
+        depth_im_array = (self.depth / np.max(self.depth) * (2**16 - 1)).astype(np.uint16)
+        self.depth_im_msg = CvBridge().cv2_to_imgmsg(depth_im_array, "mono16")
         
 
 
@@ -96,15 +100,22 @@ def main():
     rospy.Subscriber(sm.camera_topic, String, sm.camera_name_callback)
     rospy.Subscriber(sm.right_topic, Image, sm.right_callback)
     rospy.Subscriber(sm.left_topic, Image, sm.left_callback)
-    rospy.Subscriber(sm.flg_topic, String, sm.main_callback)
+    rospy.Subscriber(sm.flg_topic, String, sm.update_flg)
     pub_depth_arr = rospy.Publisher(sm.depth_arr_topic, Float32MultiArray, queue_size=1)
     pub_depth_im = rospy.Publisher(sm.depth_im_topic, Image, queue_size=1)
+    exit_code = ExitCode()
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        if sm.depth_arr_msg is not None and sm.depth_im_msg is not None and sm.flg=="1":
-            pub_depth_arr.publish(sm.depth_arr_msg)
-            pub_depth_im.publish(sm.depth_im_msg)
+        if sm.flg == "1":
+            sm.main_callback()
+            if sm.depth_arr_msg is not None and sm.depth_im_msg is not None and sm.flg=="1":
+                pub_depth_arr.publish(sm.depth_arr_msg)
+                pub_depth_im.publish(sm.depth_im_msg)
 #            r.sleep()
+            else:
+                rospy.loginfo("Stereo matching is failed.")
+                exit_code.exit_code = ExitCode.CODE_PEDICLE_STEREO_MATCHING_FAILED
+                sm.exit_code_pub.publish(exit_code)
             sm.flg = "0"
 
 #    if sm.flg == "1":

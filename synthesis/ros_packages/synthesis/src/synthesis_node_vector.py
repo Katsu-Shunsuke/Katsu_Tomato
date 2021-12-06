@@ -53,6 +53,9 @@ class Synthesis:
         self.quaternion = None
         self.translation = None
         self.point_cloud = None
+        self.instseg_finished = False
+        self.sm_finished = False
+
 
     def im_callback(self, msg):
         print("received image")
@@ -65,6 +68,7 @@ class Synthesis:
         self.depth = rosarray_to_numpy(msg)
         # convert to world coordinates
         self.xyz = stereo_reconstruction(self.depth)
+        self.sm_finished = True
         
     def instseg_callback(self, msg):
         print("received instsegres")
@@ -76,6 +80,11 @@ class Synthesis:
         self.mask_tomato = rosarray_to_numpy(msg.mask_tomato)
         self.mask_pedicel = rosarray_to_numpy(msg.mask_pedicel)
         self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
+        self.instseg_finished = True
+
+    def update_flg(self, msg):
+        if msg.data == "1":
+            self.flg = "1"
 
     def main_callback(self, msg):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
@@ -188,16 +197,12 @@ class Synthesis:
 #                            break
 #                if tomato_is_ripe:
 #                    break
-        
-        self.flg = msg.data
-                
-
     
 def main():
     rospy.init_node("synthesis", anonymous=True)
     synthesizer = Synthesis()
     rospy.Subscriber(synthesizer.im_topic, Image, synthesizer.im_callback)
-    rospy.Subscriber(synthesizer.flg_topic, String, synthesizer.main_callback)
+    rospy.Subscriber(synthesizer.flg_topic, String, synthesizer.update_flg)
     rospy.Subscriber(synthesizer.depth_topic, Float32MultiArray, synthesizer.depth_callback)
     rospy.Subscriber(synthesizer.instseg_topic, InstSegRes, synthesizer.instseg_callback)
     pub_cutpoint = rospy.Publisher(synthesizer.result_topic, CutPoint, queue_size=1)
@@ -206,19 +211,22 @@ def main():
     br = tf.TransformBroadcaster()
     exit_code = ExitCode()
     while not rospy.is_shutdown():
-        if synthesizer.flg=="1":
-            if synthesizer.point_cloud is not None:
-                pub_pointcloud.publish(synthesizer.point_cloud)
+        if synthesizer.flg == "1":
+            if synthesizer.instseg_finished and synthesizer.sm_finished:
+                synthesizer.main_callback()
 
-                if synthesizer.quaternion is not None and synthesizer.translation is not None:
-        #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
-        #            rospy.loginfo(model.result_msg)
-                    pub_cutpoint.publish(synthesizer.result_msg)
+                if synthesizer.point_cloud is not None:
                     pub_pointcloud.publish(synthesizer.point_cloud)
-        #            r.sleep()
-                    br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicle", "/zedm_left_camera_optical_frame")
-                    exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_SUCCESS
-                    synthesizer.exit_code_pub.publish(exit_code)
+
+                    if synthesizer.quaternion is not None and synthesizer.translation is not None:
+            #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
+            #            rospy.loginfo(model.result_msg)
+                        pub_cutpoint.publish(synthesizer.result_msg)
+                        pub_pointcloud.publish(synthesizer.point_cloud)
+            #            r.sleep()
+                        br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicle", "/zedm_left_camera_optical_frame")
+                        exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_SUCCESS
+                        synthesizer.exit_code_pub.publish(exit_code)
                 
             else:
                 rospy.loginfo("pedicle is not detected.")
