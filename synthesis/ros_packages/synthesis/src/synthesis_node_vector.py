@@ -227,10 +227,10 @@ def main():
                         exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_SUCCESS
                         synthesizer.exit_code_pub.publish(exit_code)
                 
-            else:
-                rospy.loginfo("pedicle is not detected.")
-                exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_FAILED
-                synthesizer.exit_code_pub.publish(exit_code)
+                else:
+                    rospy.loginfo("pedicle is not detected.")
+                    exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_FAILED
+                    synthesizer.exit_code_pub.publish(exit_code)
             
             synthesizer.flg = "0"
 

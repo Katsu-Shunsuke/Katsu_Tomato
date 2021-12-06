@@ -47,7 +47,7 @@ class StereoMatching:
         self.flg = None
         self.depth_arr_msg = None
         self.depth_im_msg = None
-        self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
+        # self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
 
     def camera_name_callback(self, msg):
         self.camera_name = msg.data
@@ -103,7 +103,7 @@ def main():
     rospy.Subscriber(sm.flg_topic, String, sm.update_flg)
     pub_depth_arr = rospy.Publisher(sm.depth_arr_topic, Float32MultiArray, queue_size=1)
     pub_depth_im = rospy.Publisher(sm.depth_im_topic, Image, queue_size=1)
-    exit_code = ExitCode()
+    # exit_code = ExitCode()
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
         if sm.flg == "1":
