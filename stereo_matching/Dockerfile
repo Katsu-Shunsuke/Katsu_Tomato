@@ -84,6 +84,7 @@ COPY keep_alive.py /root/keep_alive.py
 COPY ros_packages/dummy_camera /root/catkin_ws/src/dummy_camera
 COPY ros_packages/stereo_matching /root/catkin_ws/src/stereo_matching
 RUN . /opt/ros/noetic/setup.sh && cd ~/catkin_ws && catkin_make -DCMAKE_BUILD_TYPE=Release
+RUN . /root/.bashrc
 
 RUN cd ~/catkin_ws/src/stereo_matching/src/aanet/nets/deform_conv && bash build.sh
 
