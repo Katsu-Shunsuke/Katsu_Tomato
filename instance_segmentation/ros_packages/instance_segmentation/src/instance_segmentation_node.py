@@ -16,7 +16,7 @@ import mmcv
 from mmdet.apis import init_detector, inference_detector
 
 from utils import numpy_to_rosarray, visualize_output
-from instance_segmentation.msg import InstSegRes, ExitCode # need to edit CMakeLists.txt and package.xml
+from instance_segmentation.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
 class InstanceSegmentation:
     def __init__(self):
         # topics to subscribe and publish to
@@ -35,7 +35,6 @@ class InstanceSegmentation:
         self.flg = None
         self.result_arr_msg = None
         self.result_im_msg = None
-        self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
 
     def im_callback(self, msg):
         self.im = msg      
@@ -95,7 +94,6 @@ def main():
     rospy.Subscriber(model.flg_topic, String, model.update_flg)
     pub_arr = rospy.Publisher(model.result_arr_topic, InstSegRes, queue_size=1)
     pub_im = rospy.Publisher(model.result_im_topic, Image, queue_size=1)
-    exit_code = ExitCode()
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
         if model.flg == "1":
