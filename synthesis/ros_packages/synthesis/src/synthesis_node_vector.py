@@ -71,6 +71,7 @@ class Synthesis:
             exit_code = ExitCode()
             exit_code.exit_code = ExitCode.CODE_PEDICLE_INSTSEG_FAILED
             self.exit_code_pub.publish(exit_code)
+            return
         self.sm_finished = True
         
     def instseg_callback(self, msg):
@@ -87,6 +88,7 @@ class Synthesis:
             exit_code = ExitCode()
             exit_code.exit_code = ExitCode.CODE_PEDICLE_STEREO_MATCHING_FAILED
             self.exit_code_pub.publish(exit_code)
+            return
         self.instseg_finished = True
 
     def update_flg(self, msg):
@@ -226,22 +228,21 @@ def main():
                 if synthesizer.point_cloud is not None:
                     pub_pointcloud.publish(synthesizer.point_cloud)
 
-                    if synthesizer.quaternion is not None and synthesizer.translation is not None:
-            #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
-            #            rospy.loginfo(model.result_msg)
-                        pub_cutpoint.publish(synthesizer.result_msg)
-                        pub_pointcloud.publish(synthesizer.point_cloud)
-            #            r.sleep()
-                        br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicle", "/zedm_left_camera_optical_frame")
-                        exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_SUCCESS
-                        synthesizer.exit_code_pub.publish(exit_code)
-                
+                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.point_cloud is not None:
+        #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
+        #            rospy.loginfo(model.result_msg)
+                    pub_cutpoint.publish(synthesizer.result_msg)
+                    pub_pointcloud.publish(synthesizer.point_cloud)
+        #            r.sleep()
+                    br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicle", "/zedm_left_camera_optical_frame")
+                    exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_SUCCESS
+                    synthesizer.exit_code_pub.publish(exit_code)
                 else:
                     rospy.loginfo("pedicle is not detected.")
                     exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_FAILED
                     synthesizer.exit_code_pub.publish(exit_code)
             
-            synthesizer.flg = "0"
+                synthesizer.flg = "0"
 
 
 #    if sm.flg == "1":
