@@ -219,7 +219,6 @@ def main():
                     br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicle", "/zedm_left_camera_optical_frame")
                     exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_SUCCESS
                     synthesizer.exit_code_pub.publish(exit_code)
-                
             else:
                 rospy.loginfo("pedicle is not detected.")
                 exit_code.exit_code = ExitCode.CODE_PEDICLE_DETECTION_FAILED
