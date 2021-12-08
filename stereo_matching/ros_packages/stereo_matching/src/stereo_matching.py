@@ -75,7 +75,7 @@ class StereoMatching:
             self.aanet, self.device = load_aanet(pretrained_aanet=self.pretrained_aanet)
         print("running aanet")
         depth_raw = aanet_predict(self.array_right, self.array_left, self.aanet, self.device).astype(np.float32) # to publish as array has to be float32 for some reason
-        self.depth = cv2.resize(depth_raw, dsize=(self.im_left.width, self.im_left.height))
+        self.depth = cv2.resize(depth_raw, dsize=(self.im_left.width, self.im_left.height)) * self.im_left.width / self.in_shape[0]
         plt.imshow(self.depth)
         plt.savefig("depth.png")
         self.depth_arr_msg = numpy_to_float(self.depth, "float32")
