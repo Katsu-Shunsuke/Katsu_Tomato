@@ -99,16 +99,12 @@ def main():
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
         if model.flg == "1":
+            rospy.loginfo("Start instance segmentation.")
             model.main_callback()
-            if model.result_arr_msg is not None and model.result_im_msg is not None:
     #            rospy.loginfo(model.result_msg)
-                pub_arr.publish(model.result_arr_msg)
-                pub_im.publish(model.result_im_msg)
+            pub_arr.publish(model.result_arr_msg)
+            pub_im.publish(model.result_im_msg)
     #            r.sleep()
-            else:
-                rospy.loginfo("Instance segmentation is failed.")
-                exit_code.exit_code = ExitCode.CODE_PEDICLE_INSTSEG_FAILED
-                model.exit_code_pub.publish(exit_code)
             model.flg = "0"
 
 

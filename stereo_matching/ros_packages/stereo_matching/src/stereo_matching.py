@@ -107,10 +107,10 @@ def main():
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
         if sm.flg == "1":
+            rospy.loginfo("Start stereo matching.")
             sm.main_callback()
-            if sm.depth_arr_msg is not None and sm.depth_im_msg is not None:
-                pub_depth_arr.publish(sm.depth_arr_msg)
-                pub_depth_im.publish(sm.depth_im_msg)
+            pub_depth_arr.publish(sm.depth_arr_msg)
+            pub_depth_im.publish(sm.depth_im_msg)
 #            r.sleep()
             # else:
             #     rospy.loginfo("Stereo matching is failed.")

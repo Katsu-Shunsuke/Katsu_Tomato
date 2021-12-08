@@ -67,6 +67,10 @@ class Synthesis:
         self.depth = rosarray_to_numpy(msg)
         # convert to world coordinates
         self.xyz = stereo_reconstruction(self.depth)
+        if self.xyz is None:
+            exit_code = ExitCode()
+            exit_code.exit_code = ExitCode.CODE_PEDICLE_INSTSEG_FAILED
+            self.exit_code_pub.publish(exit_code)
         self.sm_finished = True
         
     def instseg_callback(self, msg):
@@ -79,6 +83,10 @@ class Synthesis:
         self.mask_tomato = rosarray_to_numpy(msg.mask_tomato)
         self.mask_pedicel = rosarray_to_numpy(msg.mask_pedicel)
         self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
+        if self.mask_sepal is None:
+            exit_code = ExitCode()
+            exit_code.exit_code = ExitCode.CODE_PEDICLE_STEREO_MATCHING_FAILED
+            self.exit_code_pub.publish(exit_code)
         self.instseg_finished = True
 
     def update_flg(self, msg):
@@ -212,6 +220,7 @@ def main():
     while not rospy.is_shutdown():
         if synthesizer.flg == "1":
             if synthesizer.instseg_finished and synthesizer.sm_finished:
+                rospy.loginfo("Start synthesis.")
                 synthesizer.main_callback()
 
                 if synthesizer.point_cloud is not None:
