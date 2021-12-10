@@ -22,7 +22,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <arg name="camera_model"          default="zedm" /> <!-- 'zed' or 'zedm' or 'zed2' -->
     <arg name="node_name"             default="zed_node" />
     <arg name="resolution"            default="1" /> <!-- 0, 1, or 2 -->
-    <arg name="brightness"            default="4" />
+    <arg name="brightness"            default="7" />
     <arg name="exposure"              default="100" />
 
     <!-- Load SVO file -->

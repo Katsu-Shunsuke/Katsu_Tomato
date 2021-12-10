@@ -114,7 +114,7 @@ def main():
 #            r.sleep()
             # else:
             #     rospy.loginfo("Stereo matching is failed.")
-            #     exit_code.exit_code = ExitCode.CODE_PEDICLE_STEREO_MATCHING_FAILED
+            #     exit_code.exit_code = ExitCode.CODE_PEDICEL_STEREO_MATCHING_FAILED
             #     sm.exit_code_pub.publish(exit_code)
             sm.flg = "0"
 
