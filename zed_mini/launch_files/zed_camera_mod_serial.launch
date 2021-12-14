@@ -96,22 +96,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             <param name="general/gpu_id"                    value="$(arg gpu_id)" />
 
             <!-- TF -->	
-            <param name="pos_tracking/imu_fusion"             value="$(arg publish_tf)" />
-            <param name="pos_tracking/publish_tf"             value="$(arg publish_tf)" />
-            <param name="pos_tracking/publish_map_tf"             value="$(arg publish_tf)" />
+            <param name="pos_tracking/imu_fusion"           value="$(arg publish_tf)" />
+            <param name="pos_tracking/publish_tf"           value="$(arg publish_tf)" />
+            <param name="pos_tracking/publish_map_tf"       value="$(arg publish_tf)" />
 
             <!-- RESOLUTION, BRIGHTNESS, EXPOSURE -->
-            <param name="general/resolution"                    value="$(arg resolution)" />
-            <param name="brightness"                    value="$(arg brightness)" />
-            <param name="exposure"                    value="$(arg exposure)" />
+            <param name="general/resolution"                value="$(arg resolution)" />
+            <param name="brightness"                        value="$(arg brightness)" />
+            <param name="exposure"                          value="$(arg exposure)" />
 
             <!-- SERIAL NUMBER -->
-            <param name="general/serial_number"                    value="$(arg serial_number)" />
+            <param name="general/serial_number"             value="$(arg serial_number)" />
 
             <!-- FREQUENCY -->
             <param name="pub_frame_rate"                    value="$(arg pub_frame_rate)" />
-            <param name="point_cloud_freq"                    value="$(arg point_cloud_freq)" />
-            <param name="general/grab_frame_rate"                    value="$(arg pub_frame_rate)" />
+            <param name="point_cloud_freq"                  value="$(arg point_cloud_freq)" />
+            <param name="general/grab_frame_rate"           value="$(arg pub_frame_rate)" />
 
         </node>
     </group>
