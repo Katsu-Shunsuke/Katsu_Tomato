@@ -9,6 +9,17 @@ networks:
           gateway: ${NETWORK_IP}
 
 services:
+#   dummy_camera:
+#     image: stereo_matching:latest
+#     command: bash /root/catkin_ws/src/dummy_camera/src/dummy_camera.sh
+# #    command: python /root/keep_alive.py
+#     networks:
+#       ros:
+#         ipv4_address: ${DUMMY_CAMERA_IP}
+#     environment:
+#       - "ROS_HOSTNAME=${DUMMY_CAMERA_IP}"
+#       - "ROS_MASTER_URI=http://${HOST_IP}:11311"
+
   stereo_matching:
     image: stereo_matching:latest
     command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/stereo_matching/src/ && python stereo_matching.py"
