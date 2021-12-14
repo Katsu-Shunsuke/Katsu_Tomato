@@ -76,44 +76,44 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     </group>
 
     <group ns="$(arg camera_name)">
-    <node name="$(arg node_name)" pkg="zed_wrapper" type="zed_wrapper_node" output="screen" required="true"><!-- launch-prefix="valgrind" -->
-        <rosparam file="$(find zed_wrapper)/params/common.yaml" command="load" />
-        <rosparam file="$(find zed_wrapper)/params/$(arg camera_model).yaml" command="load" />
+        <node name="$(arg node_name)" pkg="zed_wrapper" type="zed_wrapper_node" output="screen" required="true"><!-- launch-prefix="valgrind" -->
+            <rosparam file="$(find zed_wrapper)/params/common.yaml" command="load" />
+            <rosparam file="$(find zed_wrapper)/params/$(arg camera_model).yaml" command="load" />
 
-        <!-- Camera name -->
-        <param name="general/camera_name"               value="$(arg camera_name)" />
+            <!-- Camera name -->
+            <param name="general/camera_name"               value="$(arg camera_name)" />
 
-        <!-- SVO file path -->
-        <param name="general/svo_file"                  value="$(arg svo_file)" />
+            <!-- SVO file path -->
+            <param name="general/svo_file"                  value="$(arg svo_file)" />
 
-        <!-- Remote stream -->
-        <param name="general/stream"                    value="$(arg stream)" />
+            <!-- Remote stream -->
+            <param name="general/stream"                    value="$(arg stream)" />
 
-        <!-- Camera ID -->
-        <param name="general/zed_id"                    value="$(arg camera_id)" />
+            <!-- Camera ID -->
+            <param name="general/zed_id"                    value="$(arg camera_id)" />
 
-        <!-- GPU ID -->
-        <param name="general/gpu_id"                    value="$(arg gpu_id)" />
+            <!-- GPU ID -->
+            <param name="general/gpu_id"                    value="$(arg gpu_id)" />
 
-	<!-- TF -->	
-        <param name="pos_tracking/imu_fusion"             value="false" />
-        <param name="pos_tracking/publish_tf"             value="$(arg publish_tf)" />
-        <param name="pos_tracking/publish_map_tf"             value="$(arg publish_tf)" />
+            <!-- TF -->	
+            <param name="pos_tracking/imu_fusion"             value="$(arg publish_tf)" />
+            <param name="pos_tracking/publish_tf"             value="$(arg publish_tf)" />
+            <param name="pos_tracking/publish_map_tf"             value="$(arg publish_tf)" />
 
-        <!-- RESOLUTION, BRIGHTNESS, EXPOSURE -->
-	<param name="general/resolution"                    value="$(arg resolution)" />
-	<param name="brightness"                    value="$(arg brightness)" />
-	<param name="exposure"                    value="$(arg exposure)" />
+            <!-- RESOLUTION, BRIGHTNESS, EXPOSURE -->
+            <param name="general/resolution"                    value="$(arg resolution)" />
+            <param name="brightness"                    value="$(arg brightness)" />
+            <param name="exposure"                    value="$(arg exposure)" />
 
-        <!-- SERIAL NUMBER -->
-	<param name="general/serial_number"                    value="$(arg serial_number)" />
+            <!-- SERIAL NUMBER -->
+            <param name="general/serial_number"                    value="$(arg serial_number)" />
 
-        <!-- FREQUENCY -->
-	<param name="pub_frame_rate"                    value="$(arg pub_frame_rate)" />
-	<param name="point_cloud_freq"                    value="$(arg point_cloud_freq)" />
-	<param name="general/grab_frame_rate"                    value="$(arg pub_frame_rate)" />
+            <!-- FREQUENCY -->
+            <param name="pub_frame_rate"                    value="$(arg pub_frame_rate)" />
+            <param name="point_cloud_freq"                    value="$(arg point_cloud_freq)" />
+            <param name="general/grab_frame_rate"                    value="$(arg pub_frame_rate)" />
 
-    </node>
+        </node>
     </group>
 
 </launch>

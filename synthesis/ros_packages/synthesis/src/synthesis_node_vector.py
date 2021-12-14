@@ -69,7 +69,7 @@ class Synthesis:
         self.xyz = stereo_reconstruction(self.depth)
         if self.xyz is None:
             exit_code = ExitCode()
-            exit_code.exit_code = ExitCode.CODE_PEDICEL_INSTSEG_FAILED
+            exit_code.exit_code = ExitCode.CODE_PEDICEL_STEREO_MATCHING_FAILED
             self.exit_code_pub.publish(exit_code)
             return
         self.sm_finished = True
@@ -86,7 +86,7 @@ class Synthesis:
         self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
         if self.mask_sepal is None:
             exit_code = ExitCode()
-            exit_code.exit_code = ExitCode.CODE_PEDICEL_STEREO_MATCHING_FAILED
+            exit_code.exit_code = ExitCode.CODE_PEDICEL_INSTSEG_FAILED
             self.exit_code_pub.publish(exit_code)
             return
         self.instseg_finished = True

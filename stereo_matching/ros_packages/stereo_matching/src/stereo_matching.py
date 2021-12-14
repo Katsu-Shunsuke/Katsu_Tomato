@@ -18,7 +18,6 @@ sys.path.append("/root/catkin_ws/src/stereo_matching/src/aanet")
 from aanet import load_aanet, aanet_predict
 
 from ros_utils import numpy_to_float
-# from stereo_matching.msg import ExitCode
 
 class StereoMatching:
     def __init__(self):
@@ -47,7 +46,6 @@ class StereoMatching:
         self.flg = None
         self.depth_arr_msg = None
         self.depth_im_msg = None
-        # self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
 
     def camera_name_callback(self, msg):
         self.camera_name = msg.data
@@ -103,7 +101,6 @@ def main():
     rospy.Subscriber(sm.flg_topic, String, sm.update_flg)
     pub_depth_arr = rospy.Publisher(sm.depth_arr_topic, Float32MultiArray, queue_size=1)
     pub_depth_im = rospy.Publisher(sm.depth_im_topic, Image, queue_size=1)
-    # exit_code = ExitCode()
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
         if sm.flg == "1":
@@ -112,10 +109,6 @@ def main():
             pub_depth_arr.publish(sm.depth_arr_msg)
             pub_depth_im.publish(sm.depth_im_msg)
 #            r.sleep()
-            # else:
-            #     rospy.loginfo("Stereo matching is failed.")
-            #     exit_code.exit_code = ExitCode.CODE_PEDICEL_STEREO_MATCHING_FAILED
-            #     sm.exit_code_pub.publish(exit_code)
             sm.flg = "0"
 
 #    if sm.flg == "1":
