@@ -17,7 +17,6 @@ from mmdet.apis import init_detector, inference_detector
 
 from utils import numpy_to_rosarray, visualize_output
 from instance_segmentation.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
-
 class InstanceSegmentation:
     def __init__(self):
         # topics to subscribe and publish to
@@ -44,19 +43,21 @@ class InstanceSegmentation:
 #        self.im_array = np.array(im_rgb)
         self.im_array = np.array(cv_image) #mmdetection model was trined in bgr not rgb!!!!
     
-    def main_callback(self, msg):
-        if msg.data == "1" and self.im_array is not None:
-            self.flg = "1"
-            if self.maskrcnn is None:
-                self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
-            print("running maskrcnn")
-            self.result = inference_detector(self.maskrcnn, self.im_array) # list of list of array
-            self.result_arr_msg = self.to_InstSegRes(self.result)
+    def main_callback(self):
+        if self.maskrcnn is None:
+            self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
+        print("running maskrcnn")
+        self.result = inference_detector(self.maskrcnn, self.im_array) # list of list of array
+        self.result_arr_msg = self.to_InstSegRes(self.result)
 
 #            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=False)
-            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
-            self.result_im_msg = CvBridge().cv2_to_imgmsg(result_im, "rgb8")
-            print(result_im.shape)
+        result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
+        self.result_im_msg = CvBridge().cv2_to_imgmsg(result_im, "rgb8")
+        print(result_im.shape)
+
+    def update_flg(self, msg):
+        if msg.data == "1" and self.im_array is not None:
+            self.flg = "1"
 
     def to_InstSegRes(self, result):
         msg = InstSegRes()
@@ -90,17 +91,20 @@ def main():
     rospy.init_node("instance_segmentation", anonymous=True)
     model = InstanceSegmentation()
     rospy.Subscriber(model.im_topic, Image, model.im_callback)
-    rospy.Subscriber(model.flg_topic, String, model.main_callback)
+    rospy.Subscriber(model.flg_topic, String, model.update_flg)
     pub_arr = rospy.Publisher(model.result_arr_topic, InstSegRes, queue_size=1)
     pub_im = rospy.Publisher(model.result_im_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        if model.result_arr_msg is not None and model.result_im_msg is not None and model.flg=="1":
-#            rospy.loginfo(model.result_msg)
+        if model.flg == "1":
+            rospy.loginfo("Start instance segmentation.")
+            model.main_callback()
+    #            rospy.loginfo(model.result_msg)
             pub_arr.publish(model.result_arr_msg)
             pub_im.publish(model.result_im_msg)
-#            r.sleep()
+    #            r.sleep()
             model.flg = "0"
+
 
 #    if sm.flg == "1":
 #        pub.publish(sm.depth)
