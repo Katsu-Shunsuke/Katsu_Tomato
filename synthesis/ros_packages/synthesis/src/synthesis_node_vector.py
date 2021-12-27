@@ -168,10 +168,12 @@ class Synthesis:
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
                                 rot = rotation_matrix_from_vectors(vec1, vec2)
+                                print(rot)
                                 # quaternion and translation
                                 rot_eye = np.eye(4)
                                 rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
-                                self.quaternion = tf.transformations.quaternion_from_matrix(rot_eye) # no need to convert for quaternion because its just direction
+                                euler = tf.transformations.euler_from_matrix(rot_eye)
+                                self.quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
     
