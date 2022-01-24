@@ -69,7 +69,7 @@ class Synthesis:
         self.xyz = stereo_reconstruction(self.depth)
         if self.xyz is None:
             exit_code = ExitCode()
-            exit_code.exit_code = ExitCode.CODE_PEDICEL_STEREO_MATCHING_FAILED
+            exit_code.exit_code = ExitCode.CODE_PEDICEL_INSTSEG_FAILED
             self.exit_code_pub.publish(exit_code)
             return
         self.sm_finished = True
@@ -86,7 +86,7 @@ class Synthesis:
         self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
         if self.mask_sepal is None:
             exit_code = ExitCode()
-            exit_code.exit_code = ExitCode.CODE_PEDICEL_INSTSEG_FAILED
+            exit_code.exit_code = ExitCode.CODE_PEDICEL_STEREO_MATCHING_FAILED
             self.exit_code_pub.publish(exit_code)
             return
         self.instseg_finished = True
@@ -98,9 +98,9 @@ class Synthesis:
     def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
-            bbox_top = 0.5
+            bbox_top = 0.7
             ripeness_threshold = 10
-            pedicel_cut_prop = 0.5
+            pedicel_cut_prop = 0.7
             ripeness_percentile = 0.25
             deg = 5
             n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) if self.mask_pedicel.size else 0
@@ -108,9 +108,15 @@ class Synthesis:
             # publish test pointcloud2 message
             self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
-            for i in range(n_pedicels):
+            # sort pedicels
+            mask_pedicel_list = [self.mask_pedicel[self.mask_pedicel[:,2]==i][:, :2] for i in range(n_pedicels)] #i since self.mask_pedicel starts at zero
+            min_y = [np.mean(i[:,0]) for i in mask_pedicel_list]
+            mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, mask_pedicel_list))] # pedicels sorted from small y-values (vertically higher) first
+            print(n_pedicels)
+            print(min_y)
+
+            for this_pedicel in mask_pedicel_sorted:
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
-                this_pedicel = self.mask_pedicel[self.mask_pedicel[:,2]==i]
                 if this_pedicel.size:
                     # its possible for no pedicels to be detected in an image 
                     x = this_pedicel[:,1].astype("int") # actually, better to send msg as uint32
@@ -253,6 +259,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
