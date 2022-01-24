@@ -108,9 +108,15 @@ class Synthesis:
             # publish test pointcloud2 message
             self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
-            for i in range(n_pedicels):
+            # sort pedicels
+            mask_pedicel_list = [self.mask_pedicel[self.mask_pedicel[:,2]==i][:, :2] for i in range(n_pedicels)] #i since self.mask_pedicel starts at zero
+            min_y = [np.mean(i[:,0]) for i in mask_pedicel_list]
+            mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, mask_pedicel_list))] # pedicels sorted from small y-values (vertically higher) first
+            print(n_pedicels)
+            print(min_y)
+
+            for this_pedicel in mask_pedicel_sorted:
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
-                this_pedicel = self.mask_pedicel[self.mask_pedicel[:,2]==i]
                 if this_pedicel.size:
                     # its possible for no pedicels to be detected in an image 
                     x = this_pedicel[:,1].astype("int") # actually, better to send msg as uint32
@@ -253,6 +259,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
