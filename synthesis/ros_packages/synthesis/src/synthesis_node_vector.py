@@ -133,6 +133,8 @@ class Synthesis:
                             mask_indices = self.mask_tomato[self.mask_tomato[:,2]==j].astype(int)
                             # probably unnecessary to reduce if just using rgb info
                             tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]] # should be nx3
+                            rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")
+                            tomato_pixels = tomato_pixels[rgb_not_zero, :]
                             r, g, b = tomato_pixels[:,0], tomato_pixels[:,1], tomato_pixels[:,2]
                             ripeness = np.sort((r - g)/(r + g + b))
                             lower_index = int(ripeness_percentile * len(ripeness))
