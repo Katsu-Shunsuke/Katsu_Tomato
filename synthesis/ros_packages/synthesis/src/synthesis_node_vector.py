@@ -108,9 +108,15 @@ class Synthesis:
             # publish test pointcloud2 message
             self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
-            for i in range(n_pedicels):
+            # sort pedicels
+            mask_pedicel_list = [self.mask_pedicel[self.mask_pedicel[:,2]==i][:, :2] for i in range(n_pedicels)] #i since self.mask_pedicel starts at zero
+            min_y = [np.mean(i[:,0]) for i in mask_pedicel_list]
+            mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, mask_pedicel_list))] # pedicels sorted from small y-values (vertically higher) first
+            print(n_pedicels)
+            print(min_y)
+
+            for this_pedicel in mask_pedicel_sorted:
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
-                this_pedicel = self.mask_pedicel[self.mask_pedicel[:,2]==i]
                 if this_pedicel.size:
                     # its possible for no pedicels to be detected in an image 
                     x = this_pedicel[:,1].astype("int") # actually, better to send msg as uint32
@@ -127,6 +133,8 @@ class Synthesis:
                             mask_indices = self.mask_tomato[self.mask_tomato[:,2]==j].astype(int)
                             # probably unnecessary to reduce if just using rgb info
                             tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]] # should be nx3
+                            rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")
+                            tomato_pixels = tomato_pixels[rgb_not_zero, :]
                             r, g, b = tomato_pixels[:,0], tomato_pixels[:,1], tomato_pixels[:,2]
                             ripeness = np.sort((r - g)/(r + g + b))
                             lower_index = int(ripeness_percentile * len(ripeness))
@@ -168,10 +176,12 @@ class Synthesis:
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
                                 rot = rotation_matrix_from_vectors(vec1, vec2)
+                                print(rot)
                                 # quaternion and translation
                                 rot_eye = np.eye(4)
                                 rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
-                                self.quaternion = tf.transformations.quaternion_from_matrix(rot_eye) # no need to convert for quaternion because its just direction
+                                euler = tf.transformations.euler_from_matrix(rot_eye)
+                                self.quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
     
@@ -253,6 +263,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

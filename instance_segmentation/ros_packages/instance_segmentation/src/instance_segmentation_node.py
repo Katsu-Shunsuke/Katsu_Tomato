@@ -26,7 +26,7 @@ class InstanceSegmentation:
         self.result_arr_topic = "instance_segmentation_array_output"
         self.result_im_topic = "instance_segmentation_image_output"
         self.config_file = '../cascade_mask_rcnn_r50_fpn_1x_tomato.py'
-        self.checkpoint_file = '../epoch_2000.pth'
+        self.checkpoint_file = '../epoch_3000.pth'
         # output of callback methods
         self.im = None
         self.im_array = None
