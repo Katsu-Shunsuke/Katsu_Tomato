@@ -122,7 +122,6 @@ class Synthesis:
             pedicel_cut_prop = 0.5
             ripeness_percentile = 0.25
             deg = 5
-            restrain_tf = False
             
             # publish test pointcloud2 message
             self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
