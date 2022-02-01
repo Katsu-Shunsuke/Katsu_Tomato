@@ -95,6 +95,25 @@ class Synthesis:
         if msg.data == "1":
             self.flg = "1"
 
+    def calc_pedicel_quaternion(vec1, vec2, mode=0):
+        """
+        calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
+        mode 0: no restraint
+        mode 1: set euler[0] and euler[1] to zero
+        """
+        rot = rotation_matrix_from_vectors(vec1, vec2)
+        print(rot)
+        rot_eye = np.eye(4)
+        rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
+        if mode == 0:
+            quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
+        elif mode == 1:
+            euler = tf.transformations.euler_from_matrix(rot_eye)
+            quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
+        else:
+            raise Exception("Mode not recognized.")
+        return quaternion
+
     def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
@@ -103,12 +122,13 @@ class Synthesis:
             pedicel_cut_prop = 0.5
             ripeness_percentile = 0.25
             deg = 5
-            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) + 1 if self.mask_pedicel.size else 0
+            restrain_tf = False
             
             # publish test pointcloud2 message
             self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
             # sort pedicels
+            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) + 1 if self.mask_pedicel.size else 0
             mask_pedicel_list = [self.mask_pedicel[self.mask_pedicel[:,2]==i][:, :2] for i in range(n_pedicels)] #i since self.mask_pedicel starts at zero
             min_y = [np.mean(i[:,0]) for i in mask_pedicel_list]
             mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, mask_pedicel_list))] # pedicels sorted from small y-values (vertically higher) first
@@ -178,13 +198,7 @@ class Synthesis:
                                 # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
-                                rot = rotation_matrix_from_vectors(vec1, vec2)
-                                print(rot)
-                                # quaternion and translation
-                                rot_eye = np.eye(4)
-                                rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
-                                euler = tf.transformations.euler_from_matrix(rot_eye)
-                                self.quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
+                                self.quaternion = calc_pedicel_quaternion(vec1, vec2)
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
     
