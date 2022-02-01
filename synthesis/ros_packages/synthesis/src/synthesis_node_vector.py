@@ -95,10 +95,10 @@ class Synthesis:
         if msg.data == "1":
             self.flg = "1"
 
-    def calc_pedicel_quaternion(vec1, vec2, mode=0):
+    def calc_pedicel_quaternion(self, vec1, vec2, mode=0):
         """
         calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
-        mode 0: no restraint
+        mode 0: no constraint
         mode 1: set euler[0] and euler[1] to zero
         """
         rot = rotation_matrix_from_vectors(vec1, vec2)
@@ -197,7 +197,7 @@ class Synthesis:
                                 # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
-                                self.quaternion = calc_pedicel_quaternion(vec1, vec2)
+                                self.quaternion = self.calc_pedicel_quaternion(vec1, vec2)
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
     
