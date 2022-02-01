@@ -103,7 +103,7 @@ class Synthesis:
             pedicel_cut_prop = 0.5
             ripeness_percentile = 0.25
             deg = 5
-            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) if self.mask_pedicel.size else 0
+            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) + 1 if self.mask_pedicel.size else 0
             
             # publish test pointcloud2 message
             self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
@@ -114,6 +114,7 @@ class Synthesis:
             mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, mask_pedicel_list))] # pedicels sorted from small y-values (vertically higher) first
             print(n_pedicels)
             print(min_y)
+            print([np.mean(i[:,0]) for i in mask_pedicel_sorted])
 
             for this_pedicel in mask_pedicel_sorted:
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
@@ -127,7 +128,9 @@ class Synthesis:
                     # if that end point is within a tomato bbox, obtain a small patch centered around the tomato mask
                     tomato_is_ripe = False
                     for j, this_tomato in enumerate(self.bbox_tomato):
-                        x_min, y_min, x_max, y_max = this_tomato[0], this_tomato[1], this_tomato[2], this_tomato[3]
+                        x_min, y_min, w, h = this_tomato[:4]
+                        x_max = x_min + w
+                        y_max = y_min + h
                         if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
                             # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
                             mask_indices = self.mask_tomato[self.mask_tomato[:,2]==j].astype(int)
