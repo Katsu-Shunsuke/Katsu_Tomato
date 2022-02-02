@@ -32,7 +32,8 @@ class Synthesis:
         self.result_topic = "synthesis_cutpoint_output"
         self.depth_topic = "aanet_depth_array_output"
         self.instseg_topic = "instance_segmentation_array_output"
-        self.pc2_topic = "synthesis_pc2_output"
+        self.image_pc2_topic = "synthesis_image_pc2_output"
+        self.polynomial_pc2_topic = "synthesis_polynomial_pc2_output"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         # output of callback methods
         self.depth = None
@@ -52,7 +53,8 @@ class Synthesis:
         self.this_pedicel = None
         self.quaternion = None
         self.translation = None
-        self.point_cloud = None
+        self.image_point_cloud = None
+        self.polynomial_point_cloud = None
         self.instseg_finished = False
         self.sm_finished = False
 
@@ -124,7 +126,7 @@ class Synthesis:
             deg = 5
             
             # publish test pointcloud2 message
-            self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
+            self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
             # sort pedicels
             n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) + 1 if self.mask_pedicel.size else 0
@@ -200,6 +202,12 @@ class Synthesis:
                                 self.quaternion = self.calc_pedicel_quaternion(vec1, vec2)
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
+                                # visualize curve-fitted polynomial
+                                x_curve = np.polyval(coefs_yx, y_glob)
+                                z_curve = np.polyval(coefs_yz, y_glob)
+                                curve = np.vstack((x_curve, y_glob, z_curve)).T
+                                rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
+                                self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
     
     #                            # save result as matlab matrices
     #                            savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
@@ -242,7 +250,8 @@ def main():
     rospy.Subscriber(synthesizer.depth_topic, Float32MultiArray, synthesizer.depth_callback)
     rospy.Subscriber(synthesizer.instseg_topic, InstSegRes, synthesizer.instseg_callback)
     pub_cutpoint = rospy.Publisher(synthesizer.result_topic, CutPoint, queue_size=1)
-    pub_pointcloud = rospy.Publisher(synthesizer.pc2_topic, PointCloud2, queue_size=1)
+    pub_image_pointcloud = rospy.Publisher(synthesizer.image_pc2_topic, PointCloud2, queue_size=1)
+    pub_polynomial_pointcloud = rospy.Publisher(synthesizer.polynomial_pc2_topic, PointCloud2, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
     exit_code = ExitCode()
@@ -252,14 +261,16 @@ def main():
                 rospy.loginfo("Start synthesis.")
                 synthesizer.main_callback()
 
-                if synthesizer.point_cloud is not None:
-                    pub_pointcloud.publish(synthesizer.point_cloud)
+                if synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None:
+                    pub_image_pointcloud.publish(synthesizer.image_point_cloud)
+                    pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
 
-                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.point_cloud is not None:
+                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None:
         #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
         #            rospy.loginfo(model.result_msg)
                     pub_cutpoint.publish(synthesizer.result_msg)
-                    pub_pointcloud.publish(synthesizer.point_cloud)
+                    pub_image_pointcloud.publish(synthesizer.image_point_cloud)
+                    pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
         #            r.sleep()
                     br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicel", "/zedm_left_camera_optical_frame")
                     exit_code.exit_code = ExitCode.CODE_PEDICEL_DETECTION_SUCCESS
