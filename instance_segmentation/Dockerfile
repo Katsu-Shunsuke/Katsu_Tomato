@@ -13,6 +13,7 @@ RUN pip install mmcv-full==1.3.8 -f https://download.openmmlab.com/mmcv/dist/cu1
 RUN pip install torch==1.7.0 torchvision==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 RUN cd && git clone https://github.com/open-mmlab/mmdetection.git && \
     cd mmdetection && \
+    git checkout tags/v2.16.0 && \
     pip install -r requirements/build.txt && \
     pip install -v -e .
 # RUN cd && git clone https://github.com/open-mmlab/mmdetection.git
