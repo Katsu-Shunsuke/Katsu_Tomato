@@ -27,7 +27,8 @@ RUN apt install -y tmux; apt install -y vim
 RUN python -m pip install scikit-image
 RUN rm -r /usr/lib/python3/dist-packages/PIL/
 RUN rm -r /usr/lib/python3/dist-packages/Pillow*    
-RUN python -m pip install Pillow
+# RUN python -m pip install Pillow==8.1.2
+RUN python -m pip install Pillow==8.3.2
 RUN apt update && apt install -y libpython3.7-dev
 RUN python -m pip install opencv-python
 
