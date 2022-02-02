@@ -120,10 +120,11 @@ class Synthesis:
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
             bbox_top = 0.5
-            ripeness_threshold = 10
-            pedicel_cut_prop = 0.5
+            ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
+            pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
             ripeness_percentile = 0.25
             deg = 5
+            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 0)
             
             # publish test pointcloud2 message
             self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
@@ -199,7 +200,7 @@ class Synthesis:
                                 # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
-                                self.quaternion = self.calc_pedicel_quaternion(vec1, vec2)
+                                self.quaternion = self.calc_pedicel_quaternion(vec1, vec2, mode=pedicel_calc_mode)
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
                                 # visualize curve-fitted polynomial
