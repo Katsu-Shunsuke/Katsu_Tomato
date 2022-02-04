@@ -32,7 +32,8 @@ class Synthesis:
         self.result_topic = "synthesis_cutpoint_output"
         self.depth_topic = "aanet_depth_array_output"
         self.instseg_topic = "instance_segmentation_array_output"
-        self.pc2_topic = "synthesis_pc2_output"
+        self.image_pc2_topic = "synthesis_image_pc2_output"
+        self.polynomial_pc2_topic = "synthesis_polynomial_pc2_output"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         # output of callback methods
         self.depth = None
@@ -52,7 +53,8 @@ class Synthesis:
         self.this_pedicel = None
         self.quaternion = None
         self.translation = None
-        self.point_cloud = None
+        self.image_point_cloud = None
+        self.polynomial_point_cloud = None
         self.instseg_finished = False
         self.sm_finished = False
 
@@ -95,25 +97,46 @@ class Synthesis:
         if msg.data == "1":
             self.flg = "1"
 
+    def calc_pedicel_quaternion(self, vec1, vec2, mode=0):
+        """
+        calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
+        mode 0: no constraint
+        mode 1: set euler[0] and euler[1] to zero
+        """
+        rot = rotation_matrix_from_vectors(vec1, vec2)
+        print(rot)
+        rot_eye = np.eye(4)
+        rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
+        if mode == 0:
+            quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
+        elif mode == 1:
+            euler = tf.transformations.euler_from_matrix(rot_eye)
+            quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
+        else:
+            raise Exception("Mode not recognized.")
+        return quaternion
+
     def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
             bbox_top = 0.5
-            ripeness_threshold = 10
-            pedicel_cut_prop = 0.5
+            ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
+            pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
             ripeness_percentile = 0.25
             deg = 5
-            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) if self.mask_pedicel.size else 0
+            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 0)
             
             # publish test pointcloud2 message
-            self.point_cloud = generate_pc2_message(self.xyz, self.im_array)
+            self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
             # sort pedicels
+            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) + 1 if self.mask_pedicel.size else 0
             mask_pedicel_list = [self.mask_pedicel[self.mask_pedicel[:,2]==i][:, :2] for i in range(n_pedicels)] #i since self.mask_pedicel starts at zero
             min_y = [np.mean(i[:,0]) for i in mask_pedicel_list]
             mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, mask_pedicel_list))] # pedicels sorted from small y-values (vertically higher) first
             print(n_pedicels)
             print(min_y)
+            print([np.mean(i[:,0]) for i in mask_pedicel_sorted])
 
             for this_pedicel in mask_pedicel_sorted:
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
@@ -127,7 +150,9 @@ class Synthesis:
                     # if that end point is within a tomato bbox, obtain a small patch centered around the tomato mask
                     tomato_is_ripe = False
                     for j, this_tomato in enumerate(self.bbox_tomato):
-                        x_min, y_min, x_max, y_max = this_tomato[0], this_tomato[1], this_tomato[2], this_tomato[3]
+                        x_min, y_min, w, h = this_tomato[:4]
+                        x_max = x_min + w
+                        y_max = y_min + h
                         if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
                             # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
                             mask_indices = self.mask_tomato[self.mask_tomato[:,2]==j].astype(int)
@@ -175,15 +200,15 @@ class Synthesis:
                                 # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
-                                rot = rotation_matrix_from_vectors(vec1, vec2)
-                                print(rot)
-                                # quaternion and translation
-                                rot_eye = np.eye(4)
-                                rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
-                                euler = tf.transformations.euler_from_matrix(rot_eye)
-                                self.quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
+                                self.quaternion = self.calc_pedicel_quaternion(vec1, vec2, mode=pedicel_calc_mode)
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
+                                # visualize curve-fitted polynomial
+                                x_curve = np.polyval(coefs_yx, y_glob)
+                                z_curve = np.polyval(coefs_yz, y_glob)
+                                curve = np.vstack((x_curve, y_glob, z_curve)).T
+                                rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
+                                self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
     
     #                            # save result as matlab matrices
     #                            savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
@@ -226,7 +251,8 @@ def main():
     rospy.Subscriber(synthesizer.depth_topic, Float32MultiArray, synthesizer.depth_callback)
     rospy.Subscriber(synthesizer.instseg_topic, InstSegRes, synthesizer.instseg_callback)
     pub_cutpoint = rospy.Publisher(synthesizer.result_topic, CutPoint, queue_size=1)
-    pub_pointcloud = rospy.Publisher(synthesizer.pc2_topic, PointCloud2, queue_size=1)
+    pub_image_pointcloud = rospy.Publisher(synthesizer.image_pc2_topic, PointCloud2, queue_size=1)
+    pub_polynomial_pointcloud = rospy.Publisher(synthesizer.polynomial_pc2_topic, PointCloud2, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
     exit_code = ExitCode()
@@ -236,14 +262,16 @@ def main():
                 rospy.loginfo("Start synthesis.")
                 synthesizer.main_callback()
 
-                if synthesizer.point_cloud is not None:
-                    pub_pointcloud.publish(synthesizer.point_cloud)
+                if synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None:
+                    pub_image_pointcloud.publish(synthesizer.image_point_cloud)
+                    pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
 
-                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.point_cloud is not None:
+                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None:
         #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
         #            rospy.loginfo(model.result_msg)
                     pub_cutpoint.publish(synthesizer.result_msg)
-                    pub_pointcloud.publish(synthesizer.point_cloud)
+                    pub_image_pointcloud.publish(synthesizer.image_point_cloud)
+                    pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
         #            r.sleep()
                     br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicel", "/zedm_left_camera_optical_frame")
                     exit_code.exit_code = ExitCode.CODE_PEDICEL_DETECTION_SUCCESS
