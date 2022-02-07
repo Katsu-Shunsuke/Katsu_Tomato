@@ -64,7 +64,7 @@ def get_img_from_fig(fig, dpi=180):
     https://stackoverflow.com/questions/7821518/matplotlib-save-plot-to-numpy-array
     """
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=dpi)
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches='tight')
     buf.seek(0)
     img_arr = np.frombuffer(buf.getvalue(), dtype=np.uint8)
     buf.close()
@@ -89,7 +89,7 @@ def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], sh
                 # so bbox array is: [x_top_left, y_top_left, x_bottom_right, y_bottom_right, confidence_score] which is different from coco
                 if show_bbox:
                     ax.plot([bbox[0], bbox[2], bbox[2], bbox[0], bbox[0]],
-                            [bbox[1], bbox[1], bbox[3], bbox[3], bbox[1]], c[i])
+                            [bbox[1], bbox[1], bbox[3], bbox[3], bbox[1]], c[i], linewidth=4.0)
                 # plot segmenation mask
                 indices = np.nonzero(result[1][i][j])
                 ax.scatter(indices[1], indices[0], c=c[i], s=5, alpha=0.07, marker=".")
