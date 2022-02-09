@@ -287,9 +287,8 @@ def main():
                 rospy.loginfo("Start synthesis.")
                 synthesizer.main_callback()
 
-                if synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None:
+                if synthesizer.image_point_cloud is not None:
                     pub_image_pointcloud.publish(synthesizer.image_point_cloud)
-                    pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
 
                 if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None:
         #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
