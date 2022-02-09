@@ -104,7 +104,6 @@ class Synthesis:
         mode 1: set euler[0] and euler[1] to zero
         """
         rot = rotation_matrix_from_vectors(vec1, vec2)
-        print(rot)
         rot_eye = np.eye(4)
         rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
         if mode == 0:
@@ -112,9 +111,32 @@ class Synthesis:
         elif mode == 1:
             euler = tf.transformations.euler_from_matrix(rot_eye)
             quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
+        elif mode == 2:
+            # calculate theta as the angle between z_glob(or normal vector to tomato pc2) and z_pedicel
+            # 
+            #
+            theta_deg = 60
+            rot_about_pedicel = self.calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
+            rot = rot_about_pedicel @ rot
+            rot_eye[:3, :3] = rot
+            quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
         else:
             raise Exception("Mode not recognized.")
         return quaternion
+
+    def calc_rotation_matrix_about_arbitrary_axis(self, u, theta_deg):
+        """
+        u: axis (through origin) about which to rotate R, i.e. pedicel tangent vector. must be unit vector!!
+        theta_deg: amount by which to rotate in degrees
+        credit to: https://stackoverflow.com/questions/17763655/rotation-of-a-point-in-3d-about-an-arbitrary-axis-using-python
+        """
+        from numpy import sin, cos, pi
+        u = u / np.linalg.norm(u) # unit vector
+        theta = theta_deg * (pi / 180)
+        R_about_u = np.array([[cos(theta) + u[0]**2 * (1-cos(theta))           , u[0] * u[1] * (1-cos(theta)) - u[2] * sin(theta), u[0] * u[2] * (1 - cos(theta)) + u[1] * sin(theta)],
+                              [u[0] * u[1] * (1-cos(theta)) + u[2] * sin(theta), cos(theta) + u[1]**2 * (1-cos(theta))           , u[1] * u[2] * (1 - cos(theta)) - u[0] * sin(theta)],
+                              [u[0] * u[2] * (1-cos(theta)) - u[1] * sin(theta), u[1] * u[2] * (1-cos(theta)) + u[0] * sin(theta), cos(theta) + u[2]**2 * (1-cos(theta))]])
+        return R_about_u
 
     def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
@@ -125,6 +147,9 @@ class Synthesis:
             ripeness_percentile = 0.25
             deg = 5
             pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 0)
+            
+            print("\nbbox_top:", bbox_top, "\nripeness_threshold:", ripeness_threshold, "\npedicel_cut_prop:", pedicel_cut_prop,
+                  "\nripeness_percentile:", ripeness_percentile, "\ndeg:", deg, "\npedicel_calc_mode:", pedicel_calc_mode)
             
             # publish test pointcloud2 message
             self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
