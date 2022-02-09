@@ -174,7 +174,7 @@ def rotation_matrix_from_vectors(vec1, vec2):
 #     return point_cloud
 
 
-def generate_pc2_message(xyz, rgb):
+def generate_pc2_message(xyz, rgb, sampling_prop=0.1):
     header = Header(frame_id="/zedm_left_camera_optical_frame")
     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
@@ -184,7 +184,7 @@ def generate_pc2_message(xyz, rgb):
     assert(xyz.shape == rgb.shape)
     xyz = xyz.reshape((-1, 3))
     rgb = rgb.reshape((-1, 3))
-    size = round(0.1 * xyz.shape[0])
+    size = round(sampling_prop * xyz.shape[0])
     idx = np.random.randint(xyz.shape[0], size=size)
     xyz = xyz[idx, :] * 10**(-3) # mm to m
     rgb = rgb[idx, :]
