@@ -243,6 +243,7 @@ class Synthesis:
                                 # calculate tomato center
                                 tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
                                 self.tomato_center = np.array([np.mean(col) for col in tomato_xyz.T])
+                                print("tomato_center:", self.tomato_center)
                                 self.tomato_center_point_cloud = generate_pc2_message(self.tomato_center, np.array([0, 255, 255]), sampling_prop=1)
 
                                 # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
