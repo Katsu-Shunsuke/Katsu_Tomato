@@ -54,6 +54,7 @@ class Synthesis:
         self.this_pedicel = None
         self.quaternion = None
         self.translation = None
+        self.tomato_center = None
         self.image_point_cloud = None
         self.polynomial_point_cloud = None
         self.tomato_center_point_cloud = None
@@ -99,11 +100,12 @@ class Synthesis:
         if msg.data == "1":
             self.flg = "1"
 
-    def calc_pedicel_quaternion(self, vec1, vec2, mode=0):
+    def calc_pedicel_quaternion(self, vec1, vec2, mode=2):
         """
         calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
         mode 0: no constraint
         mode 1: set euler[0] and euler[1] to zero
+        mode 2: automatically calculate optimal quaternion
         """
         rot = rotation_matrix_from_vectors(vec1, vec2)
         rot_eye = np.eye(4)
@@ -114,10 +116,9 @@ class Synthesis:
             euler = tf.transformations.euler_from_matrix(rot_eye)
             quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
         elif mode == 2:
-            # calculate theta as the angle between z_glob(or normal vector to tomato pc2) and z_pedicel
-            # 
-            #
-            theta_deg = 60
+            cutpoint = np.array([self.result_msg.xyz.x, self.result_msg.xyz.y, self.result_msg.xyz.z])
+            theta_deg = self.calc_theta(vec2, self.tomato_center, cutpoint, rot)
+            print("theta_deg:", theta_deg)
             rot_about_pedicel = self.calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
             rot = rot_about_pedicel @ rot
             rot_eye[:3, :3] = rot
@@ -140,6 +141,21 @@ class Synthesis:
                               [u[0] * u[2] * (1-cos(theta)) - u[1] * sin(theta), u[1] * u[2] * (1-cos(theta)) + u[0] * sin(theta), cos(theta) + u[2]**2 * (1-cos(theta))]])
         return R_about_u
 
+    def calc_theta(self, v_p, v_t, v_c, rot, adjust_angle_deg=0):
+        """
+        v_p: pedicel direction vector
+        v_t: tomato center position vector
+        v_c: cutpoint position vector
+        """
+        v_pt = v_t - v_c - (v_t - v_c) @ v_p / np.linalg.norm(v_p)**2 * v_p # normal vector to v_p through tomato center (v_t)
+        v_pz = rot @ np.array([0, 0, 1]) # z-axis in pedicel coordinate frame
+        theta = np.arccos(v_pt @ v_pz / (np.linalg.norm(v_pt) * np.linalg.norm(v_pz)))
+        cross_prod = np.cross(v_pt, v_pz)
+        if ((cross_prod / v_p) > 0).all():
+            # if cross_prod and cutpoint in same direction then negative rotation
+            theta *= -1
+        return theta * (180 / np.pi) + adjust_angle_deg
+
     def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
@@ -148,7 +164,7 @@ class Synthesis:
             pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
             ripeness_percentile = 0.25
             deg = 5
-            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 0)
+            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 2)
             
             print("\nbbox_top:", bbox_top, "\nripeness_threshold:", ripeness_threshold, "\npedicel_cut_prop:", pedicel_cut_prop,
                   "\nripeness_percentile:", ripeness_percentile, "\ndeg:", deg, "\npedicel_calc_mode:", pedicel_calc_mode)
@@ -226,8 +242,8 @@ class Synthesis:
                                 
                                 # calculate tomato center
                                 tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
-                                tomato_center = np.array([np.mean(col) for col in tomato_xyz.T])
-                                self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
+                                self.tomato_center = np.array([np.mean(col) for col in tomato_xyz.T])
+                                self.tomato_center_point_cloud = generate_pc2_message(self.tomato_center, np.array([0, 255, 255]), sampling_prop=1)
 
                                 # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
