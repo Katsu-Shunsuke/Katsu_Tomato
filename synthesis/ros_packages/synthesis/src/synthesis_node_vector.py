@@ -155,6 +155,27 @@ class Synthesis:
             # if cross_prod and cutpoint in same direction then negative rotation
             theta *= -1
         return theta * (180 / np.pi) + adjust_angle_deg
+    
+    def calc_tomato_center(self, xyz):
+        """
+        xyz: set of points to fit the sphere (n,3)
+        we essentially minimize the equation, f=Ac
+        https://jekel.me/2015/Least-Squares-Sphere-Fit/
+        """
+        xyz = xyz[self.remove_outliers(xyz), :]
+        A = np.ones((xyz.shape[0], 4))
+        A[:,:3] = 2 * xyz # add column of ones 
+        f = np.sum(xyz ** 2, axis=1)
+        c, residules, rank, singval = np.linalg.lstsq(A, f)
+        r = np.sqrt(c[0]**2 + c[1]**2 + c[2]**2 + c[3])
+        return c[:3], r
+
+    def remove_outliers(self, x, max_deviations=0.5):
+        mean = np.mean(x[:,2])
+        std = np.std(x[:,2])
+        centered = x[:,2] - mean
+        within_stds = centered < max_deviations * std
+        return within_stds
 
     def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
@@ -243,9 +264,10 @@ class Synthesis:
                                 
                                 # calculate tomato center
                                 tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
-                                self.tomato_center = np.array([np.mean(col) for col in tomato_xyz.T])
-                                z_offset = (self.tomato_center[2] - np.min(tomato_xyz[:,2])) * z_offset_factor
-                                self.tomato_center[2] += z_offset # apply offset in z direction to ensure tomato center is never in front of pedicel
+                                # self.tomato_center = np.array([np.mean(col) for col in tomato_xyz.T])
+                                # z_offset = (self.tomato_center[2] - np.min(tomato_xyz[:,2])) * z_offset_factor
+                                # self.tomato_center[2] += z_offset # apply offset in z direction to ensure tomato center is never in front of pedicel
+                                self.tomato_center, tomato_r = self.calc_tomato_center(tomato_xyz)
                                 print("tomato_center:", self.tomato_center)
                                 self.tomato_center_point_cloud = generate_pc2_message(self.tomato_center, np.array([0, 255, 255]), sampling_prop=1)
 
