@@ -109,7 +109,6 @@ class Synthesis:
             ripeness_percentile = 0.25
             deg = 5
             pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 2)
-            z_offset_factor = 1.3
             
             print("\nbbox_top:", bbox_top, "\nripeness_threshold:", ripeness_threshold, "\npedicel_cut_prop:", pedicel_cut_prop,
                   "\nripeness_percentile:", ripeness_percentile, "\ndeg:", deg, "\npedicel_calc_mode:", pedicel_calc_mode)
@@ -187,9 +186,6 @@ class Synthesis:
                                 
                                 # calculate tomato center
                                 tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
-                                # self.tomato_center = np.array([np.mean(col) for col in tomato_xyz.T])
-                                # z_offset = (self.tomato_center[2] - np.min(tomato_xyz[:,2])) * z_offset_factor
-                                # self.tomato_center[2] += z_offset # apply offset in z direction to ensure tomato center is never in front of pedicel
                                 tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
                                 print("tomato_center:", tomato_center)
                                 self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
