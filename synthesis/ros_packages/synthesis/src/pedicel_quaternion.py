@@ -100,6 +100,5 @@ def remove_outliers(x, max_deviations=0.5):
     mean = np.mean(x[:,2])
     std = np.std(x[:,2])
     centered = x[:,2] - mean
-    within_stds = centered < max_deviations * std
+    within_stds = centered < max_deviations * std # boolean array, True means within deviation
     return within_stds
-
