@@ -25,7 +25,7 @@ def rotation_matrix_from_vectors(vec1, vec2):
     else:
         return np.eye(3) #cross of all zeros only occurs on identical directions
 
-def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedicel_end=None, mode=2):
+def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedicel_end=None, mode=3):
     """
     calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
     mode 0: no constraint

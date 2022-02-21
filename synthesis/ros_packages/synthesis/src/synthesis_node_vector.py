@@ -110,7 +110,7 @@ class Synthesis:
             pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
             ripeness_percentile = 0.25
             deg = 5
-            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 2)
+            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 3)
             
             print("\nbbox_top:", bbox_top, "\nripeness_threshold:", ripeness_threshold, "\npedicel_cut_prop:", pedicel_cut_prop,
                   "\nripeness_percentile:", ripeness_percentile, "\ndeg:", deg, "\npedicel_calc_mode:", pedicel_calc_mode)
