@@ -25,12 +25,13 @@ def rotation_matrix_from_vectors(vec1, vec2):
     else:
         return np.eye(3) #cross of all zeros only occurs on identical directions
 
-def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, mode=2):
+def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedicel_end=None, mode=2):
     """
     calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
     mode 0: no constraint
     mode 1: set euler[0] and euler[1] to zero
-    mode 2: automatically calculate optimal quaternion
+    mode 2: automatically calculate optimal quaternion by rotating about pedicel direction vector
+    mode 3: further rotate from mode2 about pedicel x axis
     """
     rot = rotation_matrix_from_vectors(vec1, vec2)
     rot_eye = np.eye(4)
@@ -40,13 +41,21 @@ def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, mode=
     elif mode == 1:
         euler = tf.transformations.euler_from_matrix(rot_eye)
         quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
-    elif mode == 2:
+    elif mode == 2 or mode == 3:
         if cutpoint is None or tomato_center is None:
             raise Exception("Must provide cutpoint and/or tomato_center")
         theta_deg = calc_theta(vec2, tomato_center, cutpoint, rot)
         print("theta_deg:", theta_deg)
         rot_about_pedicel = calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
         rot = rot_about_pedicel @ rot
+        if mode == 3:
+            if pedicel_end is None:
+                raise Exception("Must provide pedicel_end")
+            pedicel_x = rot @ np.array([1, 0, 0])
+            pedicel_z = rot @ np.array([0, 0, 1])
+            phi_deg = np.arcsin(np.abs((pedicel_end - tomato_center) @ pedicel_z) / (np.linalg.norm(pedicel_end - tomato_center) * np.linalg.norm(pedicel_z))) * (180 / np.pi) # angle between tangent plane and pedicel z axis
+            rot_about_pedicel_x = calc_rotation_matrix_about_arbitrary_axis(pedicel_x, phi_deg)
+            rot = rot_about_pedicel_x @ rot
         rot_eye[:3, :3] = rot
         quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
     else:

@@ -36,6 +36,7 @@ class Synthesis:
         self.image_pc2_topic = "synthesis_image_pc2_output"
         self.polynomial_pc2_topic = "synthesis_polynomial_pc2_output"
         self.tomato_center_pc2_topic = "synthesis_tomato_center_pc2_output"
+        self.pedicel_end_pc2_topic = "synthesis_pedicel_end_pc2_output"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         # output of callback methods
         self.depth = None
@@ -58,6 +59,7 @@ class Synthesis:
         self.image_point_cloud = None
         self.polynomial_point_cloud = None
         self.tomato_center_point_cloud = None
+        self.pedicel_end_point_cloud = None
         self.instseg_finished = False
         self.sm_finished = False
 
@@ -194,7 +196,13 @@ class Synthesis:
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
                                 cutpoint = np.array([x_pred, y_cut, z_pred])
-                                self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cutpoint, tomato_center=tomato_center, mode=pedicel_calc_mode)
+                                pedicel_end_y =  np.max(y_glob)
+                                pedicel_end_x = np.polyval(coefs_yx, pedicel_end_y)
+                                #pedicel_end_z = np.polyval(coefs_yz, pedicel_end_y)
+                                pedicel_end_z = tomato_center[2] - np.sqrt(tomato_r**2 - (pedicel_end_x - tomato_center[0])**2 - (pedicel_end_y - tomato_center[1])**2)
+                                pedicel_end = np.array([pedicel_end_x, pedicel_end_y, pedicel_end_z])
+                                self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
+                                self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cutpoint, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
                                 # visualize curve-fitted polynomial
@@ -248,6 +256,7 @@ def main():
     pub_image_pointcloud = rospy.Publisher(synthesizer.image_pc2_topic, PointCloud2, queue_size=1)
     pub_polynomial_pointcloud = rospy.Publisher(synthesizer.polynomial_pc2_topic, PointCloud2, queue_size=1)
     pub_tomato_center_pointcloud = rospy.Publisher(synthesizer.tomato_center_pc2_topic, PointCloud2, queue_size=1)
+    pub_pedicel_end_pointcloud = rospy.Publisher(synthesizer.pedicel_end_pc2_topic, PointCloud2, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
     exit_code = ExitCode()
@@ -260,13 +269,14 @@ def main():
                 if synthesizer.image_point_cloud is not None:
                     pub_image_pointcloud.publish(synthesizer.image_point_cloud)
 
-                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None and synthesizer.tomato_center_point_cloud is not None:
+                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None and synthesizer.tomato_center_point_cloud is not None and synthesizer.pedicel_end_point_cloud is not None:
         #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
         #            rospy.loginfo(model.result_msg)
                     pub_cutpoint.publish(synthesizer.result_msg)
                     pub_image_pointcloud.publish(synthesizer.image_point_cloud)
                     pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
                     pub_tomato_center_pointcloud.publish(synthesizer.tomato_center_point_cloud)
+                    pub_pedicel_end_pointcloud.publish(synthesizer.pedicel_end_point_cloud)
         #            r.sleep()
                     br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicel", "/zedm_left_camera_optical_frame")
                     exit_code.exit_code = ExitCode.CODE_PEDICEL_DETECTION_SUCCESS
