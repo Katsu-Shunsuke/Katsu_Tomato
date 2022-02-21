@@ -46,8 +46,8 @@ def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedic
             raise Exception("Must provide cutpoint and/or tomato_center")
         theta_deg = calc_theta(vec2, tomato_center, cutpoint, rot)
         print("theta_deg:", theta_deg)
-        rot_about_pedicel = calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
-        rot = rot_about_pedicel @ rot
+        rot_about_pedicel_y = calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
+        rot = rot_about_pedicel_y @ rot
         if mode == 3:
             if pedicel_end is None:
                 raise Exception("Must provide pedicel_end")
