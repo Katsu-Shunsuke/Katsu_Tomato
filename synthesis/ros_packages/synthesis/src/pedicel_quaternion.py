@@ -94,7 +94,7 @@ def calc_theta(v_p, v_t, v_c, rot, adjust_angle_deg=0):
 def calc_tomato_center(xyz):
     """
     xyz: set of points to fit the sphere (n,3)
-    we essentially minimize the equation, f=Ac
+    we essentially find the least square solution to the equation, f=Ac
     https://jekel.me/2015/Least-Squares-Sphere-Fit/
     """
     xyz = xyz[remove_outliers(xyz), :]
