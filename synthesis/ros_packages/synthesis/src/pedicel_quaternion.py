@@ -97,7 +97,7 @@ def calc_tomato_center(xyz):
     we essentially find the least square solution to the equation, f=Ac
     https://jekel.me/2015/Least-Squares-Sphere-Fit/
     """
-    xyz = xyz[remove_outliers(xyz), :]
+    xyz = xyz[remove_outliers(xyz[:,2]), :]
     A = np.ones((xyz.shape[0], 4))
     A[:,:3] = 2 * xyz # add column of ones 
     f = np.sum(xyz ** 2, axis=1)
@@ -106,8 +106,8 @@ def calc_tomato_center(xyz):
     return c[:3], r
 
 def remove_outliers(x, max_deviations=0.5):
-    mean = np.mean(x[:,2])
-    std = np.std(x[:,2])
-    centered = x[:,2] - mean
+    mean = np.mean(x)
+    std = np.std(x)
+    centered = x - mean
     within_stds = centered < max_deviations * std # boolean array, True means within deviation
     return within_stds
