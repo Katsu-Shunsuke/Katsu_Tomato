@@ -20,7 +20,8 @@ from rospy_tutorials.msg import Floats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
-from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, rotation_matrix_from_vectors, generate_pc2_message
+from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message
+from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers 
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
@@ -35,6 +36,7 @@ class Synthesis:
         self.image_pc2_topic = "synthesis_image_pc2_output"
         self.polynomial_pc2_topic = "synthesis_polynomial_pc2_output"
         self.tomato_center_pc2_topic = "synthesis_tomato_center_pc2_output"
+        self.pedicel_end_pc2_topic = "synthesis_pedicel_end_pc2_output"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         # output of callback methods
         self.depth = None
@@ -54,10 +56,10 @@ class Synthesis:
         self.this_pedicel = None
         self.quaternion = None
         self.translation = None
-        self.tomato_center = None
         self.image_point_cloud = None
         self.polynomial_point_cloud = None
         self.tomato_center_point_cloud = None
+        self.pedicel_end_point_cloud = None
         self.instseg_finished = False
         self.sm_finished = False
 
@@ -100,62 +102,6 @@ class Synthesis:
         if msg.data == "1":
             self.flg = "1"
 
-    def calc_pedicel_quaternion(self, vec1, vec2, mode=2):
-        """
-        calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
-        mode 0: no constraint
-        mode 1: set euler[0] and euler[1] to zero
-        mode 2: automatically calculate optimal quaternion
-        """
-        rot = rotation_matrix_from_vectors(vec1, vec2)
-        rot_eye = np.eye(4)
-        rot_eye[:3, :3] = rot # rotation matrix has to be 4x4 for the tf function
-        if mode == 0:
-            quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
-        elif mode == 1:
-            euler = tf.transformations.euler_from_matrix(rot_eye)
-            quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
-        elif mode == 2:
-            cutpoint = np.array([self.result_msg.xyz.x, self.result_msg.xyz.y, self.result_msg.xyz.z])
-            theta_deg = self.calc_theta(vec2, self.tomato_center, cutpoint, rot)
-            print("theta_deg:", theta_deg)
-            rot_about_pedicel = self.calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
-            rot = rot_about_pedicel @ rot
-            rot_eye[:3, :3] = rot
-            quaternion = tf.transformations.quaternion_from_matrix(rot_eye)
-        else:
-            raise Exception("Mode not recognized.")
-        return quaternion
-
-    def calc_rotation_matrix_about_arbitrary_axis(self, u, theta_deg):
-        """
-        u: axis (through origin) about which to rotate R, i.e. pedicel tangent vector. must be unit vector!!
-        theta_deg: amount by which to rotate in degrees
-        credit to: https://stackoverflow.com/questions/17763655/rotation-of-a-point-in-3d-about-an-arbitrary-axis-using-python
-        """
-        from numpy import sin, cos, pi
-        u = u / np.linalg.norm(u) # unit vector
-        theta = theta_deg * (pi / 180)
-        R_about_u = np.array([[cos(theta) + u[0]**2 * (1-cos(theta))           , u[0] * u[1] * (1-cos(theta)) - u[2] * sin(theta), u[0] * u[2] * (1 - cos(theta)) + u[1] * sin(theta)],
-                              [u[0] * u[1] * (1-cos(theta)) + u[2] * sin(theta), cos(theta) + u[1]**2 * (1-cos(theta))           , u[1] * u[2] * (1 - cos(theta)) - u[0] * sin(theta)],
-                              [u[0] * u[2] * (1-cos(theta)) - u[1] * sin(theta), u[1] * u[2] * (1-cos(theta)) + u[0] * sin(theta), cos(theta) + u[2]**2 * (1-cos(theta))]])
-        return R_about_u
-
-    def calc_theta(self, v_p, v_t, v_c, rot, adjust_angle_deg=0):
-        """
-        v_p: pedicel direction vector
-        v_t: tomato center position vector
-        v_c: cutpoint position vector
-        """
-        v_pt = v_t - v_c - (v_t - v_c) @ v_p / np.linalg.norm(v_p)**2 * v_p # normal vector to v_p through tomato center (v_t)
-        v_pz = rot @ np.array([0, 0, 1]) # z-axis in pedicel coordinate frame
-        theta = np.arccos(v_pt @ v_pz / (np.linalg.norm(v_pt) * np.linalg.norm(v_pz)))
-        cross_prod = np.cross(v_pt, v_pz)
-        if ((cross_prod / v_p) > 0).all():
-            # if cross_prod and cutpoint in same direction then negative rotation
-            theta *= -1
-        return theta * (180 / np.pi) + adjust_angle_deg
-
     def main_callback(self):
         if self.xyz is not None and self.mask_sepal is not None and self.im_array is not None:
             print("running main callback")
@@ -164,8 +110,7 @@ class Synthesis:
             pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
             ripeness_percentile = 0.25
             deg = 5
-            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 2)
-            z_offset_factor = 1.3
+            pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 3)
             
             print("\nbbox_top:", bbox_top, "\nripeness_threshold:", ripeness_threshold, "\npedicel_cut_prop:", pedicel_cut_prop,
                   "\nripeness_percentile:", ripeness_percentile, "\ndeg:", deg, "\npedicel_calc_mode:", pedicel_calc_mode)
@@ -243,16 +188,21 @@ class Synthesis:
                                 
                                 # calculate tomato center
                                 tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
-                                self.tomato_center = np.array([np.mean(col) for col in tomato_xyz.T])
-                                z_offset = (self.tomato_center[2] - np.min(tomato_xyz[:,2])) * z_offset_factor
-                                self.tomato_center[2] += z_offset # apply offset in z direction to ensure tomato center is never in front of pedicel
-                                print("tomato_center:", self.tomato_center)
-                                self.tomato_center_point_cloud = generate_pc2_message(self.tomato_center, np.array([0, 255, 255]), sampling_prop=1)
+                                tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
+                                print("tomato_center:", tomato_center)
+                                self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
 
                                 # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                                 vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                                 vec2 = r # scissor coordinates
-                                self.quaternion = self.calc_pedicel_quaternion(vec1, vec2, mode=pedicel_calc_mode)
+                                cutpoint = np.array([x_pred, y_cut, z_pred])
+                                pedicel_end_y =  np.max(y_glob)
+                                pedicel_end_x = np.polyval(coefs_yx, pedicel_end_y)
+                                #pedicel_end_z = np.polyval(coefs_yz, pedicel_end_y)
+                                pedicel_end_z = tomato_center[2] - np.sqrt(tomato_r**2 - (pedicel_end_x - tomato_center[0])**2 - (pedicel_end_y - tomato_center[1])**2)
+                                pedicel_end = np.array([pedicel_end_x, pedicel_end_y, pedicel_end_z])
+                                self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
+                                self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cutpoint, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
                                 self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
     
                                 # visualize curve-fitted polynomial
@@ -306,6 +256,7 @@ def main():
     pub_image_pointcloud = rospy.Publisher(synthesizer.image_pc2_topic, PointCloud2, queue_size=1)
     pub_polynomial_pointcloud = rospy.Publisher(synthesizer.polynomial_pc2_topic, PointCloud2, queue_size=1)
     pub_tomato_center_pointcloud = rospy.Publisher(synthesizer.tomato_center_pc2_topic, PointCloud2, queue_size=1)
+    pub_pedicel_end_pointcloud = rospy.Publisher(synthesizer.pedicel_end_pc2_topic, PointCloud2, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
     exit_code = ExitCode()
@@ -318,13 +269,14 @@ def main():
                 if synthesizer.image_point_cloud is not None:
                     pub_image_pointcloud.publish(synthesizer.image_point_cloud)
 
-                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None and synthesizer.tomato_center_point_cloud is not None:
+                if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None and synthesizer.tomato_center_point_cloud is not None and synthesizer.pedicel_end_point_cloud is not None:
         #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
         #            rospy.loginfo(model.result_msg)
                     pub_cutpoint.publish(synthesizer.result_msg)
                     pub_image_pointcloud.publish(synthesizer.image_point_cloud)
                     pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
                     pub_tomato_center_pointcloud.publish(synthesizer.tomato_center_point_cloud)
+                    pub_pedicel_end_pointcloud.publish(synthesizer.pedicel_end_point_cloud)
         #            r.sleep()
                     br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicel", "/zedm_left_camera_optical_frame")
                     exit_code.exit_code = ExitCode.CODE_PEDICEL_DETECTION_SUCCESS

@@ -6,26 +6,6 @@ import sensor_msgs.point_cloud2 as pc2
 import struct
 import numpy as np
 
-# def numpy_to_float32(array):
-#     msg = Float32MultiArray()
-#     msg.data = array.flatten()
-#     msg.layout.data_offset = 0
-#     msg.layout.dim = [MultiArrayDimension(), MultiArrayDimension()]
-#     msg.layout.dim[0].label = "height"
-#     msg.layout.dim[0].size = array.shape[0]
-#     msg.layout.dim[0].stride = array.shape[0] * array.shape[1]
-#     msg.layout.dim[1].label = "width"
-#     msg.layout.dim[1].size = array.shape[1]
-#     msg.layout.dim[0].stride = array.shape[1]
-#     return msg
-# 
-# def float32_to_numpy(msg):
-#     array = np.array(msg.data) # tuple of length h x w
-#     h = msg.layout.dim[0].size
-#     w = msg.layout.dim[1].size
-#     array = array.reshape([h, w])
-#     return array
-
 def numpy_to_rosarray(array, dtype):
     if dtype == "float32":
         msg = Float32MultiArray()
@@ -102,78 +82,6 @@ def polynomial_derivative(coefs):
         deriv_coefs.append(poly_coef * (deg - i))
     return deriv_coefs
 
-def rotation_matrix_from_vectors(vec1, vec2):
-    """ Find the rotation matrix that aligns vec1 to vec2
-    :param vec1: A 3d "source" vector
-    :param vec2: A 3d "destination" vector
-    :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
-    credit to: https://stackoverflow.com/questions/45142959/calculate-rotation-matrix-to-align-two-vectors-in-3d-space
-    """
-    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
-    v = np.cross(a, b)
-    if any(v): #if not all zeros then
-        c = np.dot(a, b)
-        s = np.linalg.norm(v)
-        kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-        return np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
-    else:
-        return np.eye(3) #cross of all zeros only occurs on identical directions
-
-# def generate_pc2_message(xyz, rgb):
-#     header = Header(frame_id="/zedA_left_camera_optical_frame")
-#     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='rgb', offset=12, datatype=PointField.UINT32, count=1)]
-#  
-#     assert(xyz.shape == rgb.shape)
-#     xyz = xyz.reshape((-1, 3))
-#     rgb = rgb.reshape((-1, 3))
-#     print(xyz.shape)
-#     print(rgb.shape)
-# 
-#     points = [[0.3, 0.0, 0.0, 0xff0000],
-#               [0.0, 0.3, 0.0, 0x00ff00],
-#               [0.0, 0.0, 0.3, 0x0000ff]]
-#  
-#     point_cloud = pc2.create_cloud(header, fields, points)
-#  
-#     return point_cloud
-
-
-
-# def generate_pc2_message(xyz, rgb):
-#     header = Header(frame_id="/zedA_left_camera_optical_frame")
-#     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='rgb', offset=12, datatype=PointField.UINT32, count=1)]
-#  
-#     assert(xyz.shape == rgb.shape)
-#     xyz = xyz.reshape((-1, 3))
-#     rgb = rgb.reshape((-1, 3))
-# 
-#     hex_color = []
-#     for i in rgb:
-#         r, g, b = i
-#         a = 255
-#         rgb = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
-#         hex_color.append(rgb)
-#         print(rgb)
-# 
-#     hex_color = np.array(hex_color).reshape((-1, 1))
-#     points = list(np.hstack((xyz, hex_color)))
-#     print(points)
-#  
-#     points = [[0.3, 0.0, 0.0, 0xff0000],
-#               [0.0, 0.3, 0.0, 0x00ff00],
-#               [0.0, 0.0, 0.3, 0x0000ff]]
-#  
-#     point_cloud = pc2.create_cloud(header, fields, points)
-#  
-#     return point_cloud
-
-
 def generate_pc2_message(xyz, rgb, sampling_prop=0.1):
     header = Header(frame_id="zedm_left_camera_optical_frame")
     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
@@ -200,31 +108,6 @@ def generate_pc2_message(xyz, rgb, sampling_prop=0.1):
  
     return point_cloud
 
-# def generate_pc2_message(xyz, rgb):
-#     header = Header(frame_id="/zedA_left_camera_optical_frame")
-#     fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
-#               PointField(name='rgb', offset=12, datatype=PointField.UINT32, count=1)]
-#  
-#     assert(xyz.shape == rgb.shape)
-#     xyz = xyz.reshape((-1, 3))
-#     rgb = rgb.reshape((-1, 3))
-#     hex_color = np.array([0xff0000] * xyz.shape[0]).reshape((-1,1))
-# 
-#     points = list(np.hstack((xyz, hex_color)))
-#     print(points)
-#  
-#     point_cloud = pc2.create_cloud(header, fields, points)
-#  
-#     return point_cloud
-
-def Color(red, green, blue, white = 0):
-    """Convert the provided red, green, blue color to a 24-bit color value.
-    Each color component should be a value 0-255 where 0 is the lowest intensity
-    and 255 is the highest intensity.
-    """
-    return (white << 24) | (red << 16)| (green << 8) | blue
 
 
 
