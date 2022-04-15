@@ -113,11 +113,11 @@ ipython -i main.py -- __ns:=d_robot
 
 - ロボット制御
 
-[moveit許容誤差：20220207_大玉トマト収穫動作の改善（1）](https://appl.dndev.net/sn03/wiki/pages/viewpage.action?pageId=445490702)
+[moveit許容誤差：20220207_大玉トマト収穫動作の改善（1）](https://appl.dndev.net/sn03/wiki/pages/viewpage.action?pageId=436045212)
 
-[20211208_大玉トマトテスト事前準備](https://appl.dndev.net/sn03/wiki/pages/viewpage.action?pageId=445490702)
+[20211208_大玉トマトテスト事前準備](https://appl.dndev.net/sn03/wiki/pages/viewpage.action?pageId=423959718)
 
-[20220124_大玉ロボット事前動作確認](https://appl.dndev.net/sn03/wiki/pages/viewpage.action?pageId=445490702)
+[20220124_大玉ロボット事前動作確認](https://appl.dndev.net/sn03/wiki/pages/viewpage.action?pageId=431997979)
 
 - IFbox関連
 
