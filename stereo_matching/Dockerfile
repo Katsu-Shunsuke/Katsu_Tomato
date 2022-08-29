@@ -15,7 +15,8 @@ RUN apt update && \
     apt install -y software-properties-common && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt install -y python3.7 && \
-    apt install -y python3-pip
+    apt install -y python3-pip && \
+    apt install -y python3.7-distutils
 RUN ln -s python3.7 /usr/bin/python
 RUN python -m pip install torch==1.2.0 torchvision==0.4.0 -f https://download.pytorch.org/whl/torch_stable.html
 RUN python -m pip install numpy -I

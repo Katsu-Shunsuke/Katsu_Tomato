@@ -7,7 +7,7 @@ FROM osrf/ros:noetic-desktop-full
 RUN apt update && apt install -y python3-pip tmux vim
 RUN ln -s python3.8 /usr/bin/python
 
-RUN pip install scikit-learn
+RUN python -m pip install scikit-learn
 
 #catkin_ws
 RUN . /opt/ros/noetic/setup.sh && \
