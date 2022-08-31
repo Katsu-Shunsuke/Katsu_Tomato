@@ -20,7 +20,7 @@ from rospy_tutorials.msg import Floats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
-from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg
+from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output
 from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers 
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
@@ -37,6 +37,7 @@ class Synthesis:
         self.polynomial_pc2_topic = "synthesis_polynomial_pc2_output"
         self.tomato_center_pc2_topic = "synthesis_tomato_center_pc2_output"
         self.pedicel_end_pc2_topic = "synthesis_pedicel_end_pc2_output"
+        self.instseg_im_filtered_topic = "instance_segmentation_filtered_image_output"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         # output of callback methods
         self.depth = None
@@ -60,6 +61,7 @@ class Synthesis:
         self.polynomial_point_cloud = None
         self.tomato_center_point_cloud = None
         self.pedicel_end_point_cloud = None
+        self.instseg_im_filtered = None
         self.instseg_finished = False
         self.sm_finished = False
 
@@ -95,6 +97,13 @@ class Synthesis:
                                                               rosarray_to_numpy(msg.mask_pedicel), threshold_pedicel)
         self.bbox_sepal, self.mask_sepal = filter_instseg(rosarray_to_numpy(msg.bbox_sepal),
                                                           rosarray_to_numpy(msg.mask_sepal), threshold_sepal)
+
+        # visualize filtered result
+        instseg_result = [[self.bbox_stem, self.bbox_tomato, self.bbox_pedicel, self.bbox_sepal],
+                          [self.mask_stem, self.mask_tomato, self.mask_pedicel, self.mask_sepal]]
+        instseg_im_filtered = visualize_output(self.im_array, instseg_result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
+        self.instseg_im_filtered = CvBridge().cv2_to_imgmsg(instseg_im_filtered, "rgb8")
+
         if self.mask_sepal is None:
             exit_code = ExitCode()
             exit_code.exit_code = ExitCode.CODE_PEDICEL_INSTSEG_FAILED
@@ -258,6 +267,7 @@ def main():
     pub_polynomial_pointcloud = rospy.Publisher(synthesizer.polynomial_pc2_topic, PointCloud2, queue_size=1)
     pub_tomato_center_pointcloud = rospy.Publisher(synthesizer.tomato_center_pc2_topic, PointCloud2, queue_size=1)
     pub_pedicel_end_pointcloud = rospy.Publisher(synthesizer.pedicel_end_pc2_topic, PointCloud2, queue_size=1)
+    pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
     exit_code = ExitCode()
@@ -269,6 +279,9 @@ def main():
 
                 if synthesizer.image_point_cloud is not None:
                     pub_image_pointcloud.publish(synthesizer.image_point_cloud)
+
+                if synthesizer.instseg_im_filtered is not None:
+                    pub_instseg_im_filtered.publish(synthesizer.instseg_im_filtered)
 
                 if synthesizer.quaternion is not None and synthesizer.translation is not None and synthesizer.image_point_cloud is not None and synthesizer.polynomial_point_cloud is not None and synthesizer.tomato_center_point_cloud is not None and synthesizer.pedicel_end_point_cloud is not None:
         #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
