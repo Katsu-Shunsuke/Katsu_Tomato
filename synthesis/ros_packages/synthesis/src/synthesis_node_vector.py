@@ -20,7 +20,7 @@ from rospy_tutorials.msg import Floats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
-from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message
+from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg
 from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers 
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
@@ -83,14 +83,18 @@ class Synthesis:
         
     def instseg_callback(self, msg):
         print("received instsegres")
-        self.bbox_stem = rosarray_to_numpy(msg.bbox_stem)
-        self.bbox_tomato = rosarray_to_numpy(msg.bbox_tomato)
-        self.bbox_pedicel = rosarray_to_numpy(msg.bbox_pedicel)
-        self.bbox_sepal = rosarray_to_numpy(msg.bbox_sepal)
-        self.mask_stem = rosarray_to_numpy(msg.mask_stem) # indices not bool array
-        self.mask_tomato = rosarray_to_numpy(msg.mask_tomato)
-        self.mask_pedicel = rosarray_to_numpy(msg.mask_pedicel)
-        self.mask_sepal = rosarray_to_numpy(msg.mask_sepal)
+        threshold_stem = 0.3
+        threshold_tomato = 0.1
+        threshold_pedicel = 0.1
+        threshold_sepal = 0.2
+        self.bbox_stem, self.mask_stem = filter_instseg(rosarray_to_numpy(msg.bbox_stem),
+                                                        rosarray_to_numpy(msg.mask_stem), threshold_stem)
+        self.bbox_tomato, self.mask_tomato = filter_instseg(rosarray_to_numpy(msg.bbox_tomato),
+                                                            rosarray_to_numpy(msg.mask_tomato), threshold_tomato)
+        self.bbox_pedicel, self.mask_pedicel = filter_instseg(rosarray_to_numpy(msg.bbox_pedicel),
+                                                              rosarray_to_numpy(msg.mask_pedicel), threshold_pedicel)
+        self.bbox_sepal, self.mask_sepal = filter_instseg(rosarray_to_numpy(msg.bbox_sepal),
+                                                          rosarray_to_numpy(msg.mask_sepal), threshold_sepal)
         if self.mask_sepal is None:
             exit_code = ExitCode()
             exit_code.exit_code = ExitCode.CODE_PEDICEL_INSTSEG_FAILED
@@ -114,22 +118,19 @@ class Synthesis:
             
             print("\nbbox_top:", bbox_top, "\nripeness_threshold:", ripeness_threshold, "\npedicel_cut_prop:", pedicel_cut_prop,
                   "\nripeness_percentile:", ripeness_percentile, "\ndeg:", deg, "\npedicel_calc_mode:", pedicel_calc_mode)
-            
+
             # publish test pointcloud2 message
             self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
 
             # sort pedicels
-            n_pedicels = np.max(self.mask_pedicel[:,2]).astype(int) + 1 if self.mask_pedicel.size else 0
-            mask_pedicel_list = [self.mask_pedicel[self.mask_pedicel[:,2]==i][:, :2] for i in range(n_pedicels)] #i since self.mask_pedicel starts at zero
-            min_y = [np.mean(i[:,0]) for i in mask_pedicel_list]
-            mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, mask_pedicel_list))] # pedicels sorted from small y-values (vertically higher) first
-            print(n_pedicels)
-            print(min_y)
-            print([np.mean(i[:,0]) for i in mask_pedicel_sorted])
+            n_pedicels = int(len(self.mask_pedicel))
+            min_y = [np.mean(i[:,0]) for i in self.mask_pedicel]
+            mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, self.mask_pedicel))] # pedicels sorted from small y-values (vertically higher) first
+            print("n_pedicels:", n_pedicels)
 
             for this_pedicel in mask_pedicel_sorted:
                 # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
-                if this_pedicel.size:
+                if this_pedicel.size: # I feel like this condition isnt necessary because if mask_pedicel_sorted is empty then for loop isnt executed - check this
                     # its possible for no pedicels to be detected in an image 
                     x = this_pedicel[:,1].astype("int") # actually, better to send msg as uint32
                     y = this_pedicel[:,0].astype("int")
@@ -144,7 +145,7 @@ class Synthesis:
                         y_max = y_min + h
                         if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
                             # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
-                            mask_indices = self.mask_tomato[self.mask_tomato[:,2]==j].astype(int)
+                            mask_indices = self.mask_tomato[j].astype(int)
                             # probably unnecessary to reduce if just using rgb info
                             tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]] # should be nx3
                             rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")

@@ -108,8 +108,31 @@ def generate_pc2_message(xyz, rgb, sampling_prop=0.1):
  
     return point_cloud
 
-
-
+def filter_instseg(bbox, mask, threshold):
+    """
+    INPUTS
+    bbox: (n_instances, 5), indices 0-3 are for bbox, index 4 is confidence score
+    mask: (n_points, 3), first 2 columns are i and j, third column specifies which instance
+    threshold: float
+    OUTPUTS
+    bbox: (n_instances_filtered, 5)
+    mask: list of (n_points, 2), list of length=n_instances_filtered
+    """
+    # convert mask to list form
+    n_instances = np.max(mask[:,2]).astype(int) + 1 if mask.size else 0 # it is possible that no pedicels are detected
+    mask_list = [mask[mask[:,2]==i][:, :2] for i in range(n_instances)] #i since self.mask_pedicel starts at zero
+    
+    assert(n_instances == len(bbox))
+    if n_instances > 0:
+        bbox_out = []
+        mask_out = []
+        for i, instance in enumerate(bbox):
+            if instance[4] > threshold:
+                bbox_out.append(instance)
+                mask_out.append(mask_list[i])
+        return np.vstack(bbox_out), mask_out
+    else:
+        return bbox, mask_list
 
 
 
