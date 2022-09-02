@@ -20,7 +20,7 @@ from rospy_tutorials.msg import Floats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
-from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output
+from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output, curve_fitting
 from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers 
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
@@ -123,13 +123,10 @@ class Synthesis:
         print("running main callback")
         bbox_top = 0.5
         ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
-        pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
         ripeness_percentile = 0.25
-        deg = 5
         pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 3)
         
-        print("\nbbox_top:", bbox_top, "\nripeness_threshold:", ripeness_threshold, "\npedicel_cut_prop:", pedicel_cut_prop,
-              "\nripeness_percentile:", ripeness_percentile, "\ndeg:", deg, "\npedicel_calc_mode:", pedicel_calc_mode)
+        print("\nbbox_top: {}\nripeness_threshold: {}\nripeness_percentile: {}\npedicel_calc_mode: {}".format(bbox_top, ripeness_threshold, ripeness_percentile, pedicel_calc_mode))
 
         # publish test pointcloud2 message
         self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
@@ -171,56 +168,34 @@ class Synthesis:
                         self.this_pedicel = this_pedicel
                         pedicel_xyz = self.xyz[y, x, :]
                         x_glob, y_glob, z_glob = pedicel_xyz[:, 0], pedicel_xyz[:, 1], pedicel_xyz[:, 2]
-                        # polynomial regeression
-                        coefs_yx = np.polyfit(y_glob, x_glob, deg=deg)
-                        coefs_yz = np.polyfit(y_glob, z_glob, deg=deg)
-                        # need to think about coordinate system
-                        index = int((pedicel_cut_prop) * len(y_glob))
-                        y_cut = np.partition(y_glob, index)[index]
-                        # predict
-                        x_pred = np.polyval(coefs_yx, y_cut)
-                        z_pred = np.polyval(coefs_yz, y_cut)
-                        # pedicel xyz position
-                        cut_point = CutPoint()
-                        point = Point32()
-                        point.x, point.y, point.z = x_pred, y_cut, z_pred
-                        cut_point.xyz = point
-                        # tangent vector (3D)
-                        deriv_coefs_yx = polynomial_derivative(coefs_yx)
-                        deriv_coefs_yz = polynomial_derivative(coefs_yz)
-                        deriv_yx = np.polyval(deriv_coefs_yx, y_cut)
-                        deriv_yz = np.polyval(deriv_coefs_yz, y_cut)
-                        r = np.array([deriv_yx, 1, deriv_yz])
-                        r = r / np.linalg.norm(r) # unit vector
-                        dir_vector = Vector3()
-                        dir_vector.x, dir_vector.y, dir_vector.z = r
-                        cut_point.tangent = dir_vector
-                        # custom message with point and tangent vector
-                        self.result_msg = cut_point
-                        
+
                         # calculate tomato center
                         tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
                         tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
                         print("tomato_center:", tomato_center)
                         self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
 
+                        cut_point, dir_vector, pedicel_end, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center, tomato_r=tomato_r)
+
+                        # cutpoint
+                        cut_point_msg = CutPoint()
+                        point = Point32()
+                        point.x, point.y, point.z = cut_point
+                        cut_point_msg.xyz = point
+                        # direction vector
+                        dir_vector_msg = Vector3()
+                        dir_vector_msg.x, dir_vector_msg.y, dir_vector_msg.z = dir_vector
+                        cut_point_msg.tangent = dir_vector_msg
+                        self.result_msg = cut_point_msg
+
                         # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                         vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
-                        vec2 = r # scissor coordinates
-                        cutpoint = np.array([x_pred, y_cut, z_pred])
-                        pedicel_end_y =  np.max(y_glob)
-                        pedicel_end_x = np.polyval(coefs_yx, pedicel_end_y)
-                        #pedicel_end_z = np.polyval(coefs_yz, pedicel_end_y)
-                        pedicel_end_z = tomato_center[2] - np.sqrt(tomato_r**2 - (pedicel_end_x - tomato_center[0])**2 - (pedicel_end_y - tomato_center[1])**2)
-                        pedicel_end = np.array([pedicel_end_x, pedicel_end_y, pedicel_end_z])
+                        vec2 = dir_vector # scissor coordinates
                         self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
-                        self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cutpoint, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
-                        self.translation = tuple(np.array([x_pred, y_cut, z_pred]) * 10**(-3)) # mm to m
+                        self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
+                        self.translation = tuple(cut_point * 10**(-3)) # mm to m
     
                         # visualize curve-fitted polynomial
-                        x_curve = np.polyval(coefs_yx, y_glob)
-                        z_curve = np.polyval(coefs_yz, y_glob)
-                        curve = np.vstack((x_curve, y_glob, z_curve)).T
                         rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
                         self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
     

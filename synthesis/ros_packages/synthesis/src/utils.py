@@ -160,8 +160,6 @@ def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], sh
                 # plot segmenation mask
                 indices = result[1][i][j]
                 ax.scatter(indices[:,1], indices[:,0], c=c[i], s=5, alpha=0.07, marker=".")
-#     plt.xlim([0,1240])
-#     plt.ylim([720,0])
 
     ax.tick_params(left=False, right=False, labelleft=False, labelbottom=False, bottom=False)
 
@@ -172,7 +170,7 @@ def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], sh
 
     return img
 
-def get_img_from_fig(fig, dpi=180):
+def get_img_from_fig(fig, dpi=80):
     """
     credit to:
     https://stackoverflow.com/questions/7821518/matplotlib-save-plot-to-numpy-array
@@ -185,3 +183,61 @@ def get_img_from_fig(fig, dpi=180):
     img = cv2.imdecode(img_arr, 1)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return img
+
+def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None):
+    """
+    INPUTS
+    x: (n_points,)
+    y: (n_points,)
+    z: (n_points,)
+    mode: str
+    OUTPUTS
+    cutpoint:
+    dir_vector: 
+    pedicel_end:
+    fitted_curve:
+    """
+    if mode == "polynomial":
+        if tomato_center is None or tomato_r is None:
+            raise Exception("Must provide tomato_center and/or tomato_r")
+        deg = rospy.get_param("deg", 4)
+        pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
+        # polynomial regeression
+        coefs_yx = np.polyfit(y, x, deg=deg)
+        coefs_yz = np.polyfit(y, z, deg=deg)
+        # need to think about coordinate system
+        index = int((pedicel_cut_prop) * len(y))
+        y_cut = np.partition(y, index)[index]
+        # predict
+        x_pred = np.polyval(coefs_yx, y_cut)
+        z_pred = np.polyval(coefs_yz, y_cut)
+        # pedicel xyz position
+        cut_point = np.array([x_pred, y_cut, z_pred])
+        # tangent vector (3D)
+        deriv_coefs_yx = polynomial_derivative(coefs_yx)
+        deriv_coefs_yz = polynomial_derivative(coefs_yz)
+        deriv_yx = np.polyval(deriv_coefs_yx, y_cut)
+        deriv_yz = np.polyval(deriv_coefs_yz, y_cut)
+        dir_vector = np.array([deriv_yx, 1, deriv_yz])
+        dir_vector /= np.linalg.norm(dir_vector) # unit vector
+    
+        # pedicel_end
+        pedicel_end_y =  np.max(y)
+        pedicel_end_x = np.polyval(coefs_yx, pedicel_end_y)
+        #pedicel_end_z = np.polyval(coefs_yz, pedicel_end_y)
+        pedicel_end_z = tomato_center[2] - np.sqrt(tomato_r**2 - (pedicel_end_x - tomato_center[0])**2 - (pedicel_end_y - tomato_center[1])**2)
+        pedicel_end = np.array([pedicel_end_x, pedicel_end_y, pedicel_end_z])
+
+        # fitted curve for visualization
+        x_curve = np.polyval(coefs_yx, y)
+        z_curve = np.polyval(coefs_yz, y)
+        curve = np.vstack((x_curve, y, z_curve)).T
+    else:
+        raise Exception("Unrecognized mode.")
+
+    return cut_point, dir_vector, pedicel_end, curve 
+
+
+
+
+
