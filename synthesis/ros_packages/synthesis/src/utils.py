@@ -9,6 +9,7 @@ import struct
 import numpy as np
 
 from matplotlib import pyplot as plt
+from scipy import interpolate
 
 def numpy_to_rosarray(array, dtype):
     if dtype == "float32":
@@ -197,11 +198,12 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
     pedicel_end:
     fitted_curve:
     """
+    pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
+    
     if mode == "polynomial":
         if tomato_center is None or tomato_r is None:
             raise Exception("Must provide tomato_center and/or tomato_r")
         deg = rospy.get_param("deg", 4)
-        pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
         # polynomial regeression
         coefs_yx = np.polyfit(y, x, deg=deg)
         coefs_yz = np.polyfit(y, z, deg=deg)
@@ -232,6 +234,18 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
         x_curve = np.polyval(coefs_yx, y)
         z_curve = np.polyval(coefs_yz, y)
         curve = np.vstack((x_curve, y, z_curve)).T
+    elif mode == "spline":
+        # WIP
+        raise Exception("Don't use this mode, still a work in progress.")
+        n = 1000
+        s = round(len(x) / 10)
+        k = 5
+        tck, u = interpolate.splprep([x, y, z], s=s, k=k)
+        u_fine = np.linspace(0, 1, n)
+        xyz_curve = interpolate.splev(u, tck)
+        curve = np.vstack(xyz_curve).T
+    elif mode == "PCA":
+        pass
     else:
         raise Exception("Unrecognized mode.")
 
