@@ -283,6 +283,9 @@ def main():
                     synthesizer.exit_code_pub.publish(exit_code)
             
                 synthesizer.flg = "0"
+                synthesizer.inst_seg_finished = False
+                synthesizer.sm_finished = False
+
 
 
 #    if sm.flg == "1":
