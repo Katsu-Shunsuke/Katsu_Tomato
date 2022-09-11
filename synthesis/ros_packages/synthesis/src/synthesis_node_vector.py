@@ -39,6 +39,7 @@ class Synthesis:
         self.pedicel_end_pc2_topic = "synthesis_pedicel_end_pc2_output"
         self.instseg_im_filtered_topic = "instance_segmentation_filtered_image_output"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
+        self.publish_filtered_instseg_image = False
         # output of callback methods
         self.depth = None
         self.xyz = None
@@ -86,13 +87,14 @@ class Synthesis:
         
     def instseg_callback(self, msg):
         # dont think this is the best way but this callback must wait until im_callback has finished.
-        while self.im_array is None:
-            pass
+        if self.publish_filtered_instseg_image:
+            while self.im_array is None:
+                pass
         print("received instsegres")
-        threshold_stem = 0.3
-        threshold_tomato = 0.1
-        threshold_pedicel = 0.1
-        threshold_sepal = 0.2
+        threshold_stem = rospy.get_param("threshold_stem", 0.3)
+        threshold_tomato = rospy.get_param("threshold_tomato", 0.1)
+        threshold_pedicel = rospy.get_param("threshold_pedicel", 0.1)
+        threshold_sepal = rospy.get_param("threshold_sepal", 0.2)
         self.bbox_stem, self.mask_stem = filter_instseg(rosarray_to_numpy(msg.bbox_stem),
                                                         rosarray_to_numpy(msg.mask_stem), threshold_stem)
         self.bbox_tomato, self.mask_tomato = filter_instseg(rosarray_to_numpy(msg.bbox_tomato),
@@ -103,10 +105,11 @@ class Synthesis:
                                                           rosarray_to_numpy(msg.mask_sepal), threshold_sepal)
 
         # visualize filtered result
-        instseg_result = [[self.bbox_stem, self.bbox_tomato, self.bbox_pedicel, self.bbox_sepal],
-                          [self.mask_stem, self.mask_tomato, self.mask_pedicel, self.mask_sepal]]
-        instseg_im_filtered = visualize_output(self.im_array, instseg_result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
-        self.instseg_im_filtered = CvBridge().cv2_to_imgmsg(instseg_im_filtered, "rgb8")
+        if self.publish_filtered_instseg_image:
+            instseg_result = [[self.bbox_stem, self.bbox_tomato, self.bbox_pedicel, self.bbox_sepal],
+                              [self.mask_stem, self.mask_tomato, self.mask_pedicel, self.mask_sepal]]
+            instseg_im_filtered = visualize_output(self.im_array, instseg_result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
+            self.instseg_im_filtered = CvBridge().cv2_to_imgmsg(instseg_im_filtered, "rgb8")
 
         if self.mask_sepal is None:
             exit_code = ExitCode()
@@ -251,7 +254,8 @@ def main():
     pub_polynomial_pointcloud = rospy.Publisher(synthesizer.polynomial_pc2_topic, PointCloud2, queue_size=1)
     pub_tomato_center_pointcloud = rospy.Publisher(synthesizer.tomato_center_pc2_topic, PointCloud2, queue_size=1)
     pub_pedicel_end_pointcloud = rospy.Publisher(synthesizer.pedicel_end_pc2_topic, PointCloud2, queue_size=1)
-    pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
+    if synthesizer.publish_filtered_instseg_image:
+        pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     br = tf.TransformBroadcaster()
     exit_code = ExitCode()
@@ -263,7 +267,8 @@ def main():
 
                 pub_image_pointcloud.publish(synthesizer.image_point_cloud)
 
-                pub_instseg_im_filtered.publish(synthesizer.instseg_im_filtered)
+                if synthesizer.publish_filtered_instseg_image:
+                    pub_instseg_im_filtered.publish(synthesizer.instseg_im_filtered)
 
                 if synthesizer.tf_computed:
         #        if synthesizer.result_msg is not None and synthesizer.flg=="1":

@@ -27,7 +27,7 @@ class InstanceSegmentation:
         self.result_im_topic = "instance_segmentation_image_output"
         self.config_file = '../cascade_mask_rcnn_r50_fpn_1x_tomato.py'
         self.checkpoint_file = '../epoch_3000.pth'
-        self.publish_unfiltered_result_image = False
+        self.publish_filtered_result_image = True
         # output of callback methods
         self.im = None
         self.im_array = None
@@ -52,8 +52,13 @@ class InstanceSegmentation:
         self.result_arr_msg = self.to_InstSegRes(self.result)
 
 #            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=False)
-        if self.publish_unfiltered_result_image:
-            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.0, 0.0, 0.0, 0.0], show_bbox=True, save_im=False)
+        if self.publish_filtered_result_image:
+            threshold_stem = rospy.get_param("threshold_stem", 0.3)
+            threshold_tomato = rospy.get_param("threshold_tomato", 0.1)
+            threshold_pedicel = rospy.get_param("threshold_pedicel", 0.1)
+            threshold_sepal = rospy.get_param("threshold_sepal", 0.2)
+            threshold_per_class = [threshold_stem, threshold_tomato, threshold_pedicel, threshold_sepal]
+            result_im = visualize_output(self.im_array, self.result, threshold_per_class=threshold_per_class, show_bbox=True, save_im=False)
             self.result_im_msg = CvBridge().cv2_to_imgmsg(result_im, "rgb8")
 
     def update_flg(self, msg):
@@ -94,7 +99,7 @@ def main():
     rospy.Subscriber(model.im_topic, Image, model.im_callback)
     rospy.Subscriber(model.flg_topic, String, model.update_flg)
     pub_arr = rospy.Publisher(model.result_arr_topic, InstSegRes, queue_size=1)
-    if model.publish_unfiltered_result_image:
+    if model.publish_filtered_result_image:
         pub_im = rospy.Publisher(model.result_im_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
@@ -103,7 +108,7 @@ def main():
             model.main_callback()
     #            rospy.loginfo(model.result_msg)
             pub_arr.publish(model.result_arr_msg)
-            if model.publish_unfiltered_result_image:
+            if model.publish_filtered_result_image:
                 pub_im.publish(model.result_im_msg)
     #            r.sleep()
             model.flg = "0"
