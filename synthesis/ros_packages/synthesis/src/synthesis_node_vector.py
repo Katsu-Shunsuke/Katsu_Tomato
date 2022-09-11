@@ -142,9 +142,10 @@ class Synthesis:
         mask_pedicel_sorted = [i for _, i in sorted(zip(min_y, self.mask_pedicel))] # pedicels sorted from small y-values (vertically higher) first
         print("n_pedicels:", n_pedicels, "\n")
 
-        if which_tomato > n_pedicels - 1:
-            raise Exception("which_tomato must be an integer in the range 0, ..., n_pedicels-1")
-        mask_pedicel_sorted = mask_pedicel_sorted[which_tomato:]
+        if n_pedicels != 0:
+            if which_tomato > n_pedicels - 1:
+                raise Exception("which_tomato must be an integer in the range 0, ..., n_pedicels-1")
+            mask_pedicel_sorted = mask_pedicel_sorted[which_tomato:]
 
         # if mask_pedicel_sorted is empty then this loop is skipped. 
         for this_pedicel in mask_pedicel_sorted:
