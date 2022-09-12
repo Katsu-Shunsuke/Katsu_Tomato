@@ -135,7 +135,10 @@ def filter_instseg(bbox, mask, threshold):
             if instance[4] > threshold:
                 bbox_out.append(instance)
                 mask_out.append(mask_list[i])
-        return np.vstack(bbox_out), mask_out
+        if bbox_out: # possible that n_instance!=0 but threshold not met
+            return np.vstack(bbox_out), mask_out
+        else:
+            return bbox, mask_list
     else:
         return bbox, mask_list
 
