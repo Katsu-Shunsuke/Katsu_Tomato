@@ -128,10 +128,10 @@ class Synthesis:
         ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
         ripeness_percentile = 0.25
         pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 3)
-        which_tomato = rospy.get_param("which_tomato", 0)
+        which_pedicel = rospy.get_param("which_pedicel", 0)
         
-        print("\nbbox_top: {}\nripeness_threshold: {}\nripeness_percentile: {}\npedicel_calc_mode: {}\nwhich_tomato: {}\n".format(bbox_top,
-            ripeness_threshold, ripeness_percentile, pedicel_calc_mode, which_tomato))
+        print("\nbbox_top: {}\nripeness_threshold: {}\nripeness_percentile: {}\npedicel_calc_mode: {}\nwhich_pedicel: {}\n".format(bbox_top,
+            ripeness_threshold, ripeness_percentile, pedicel_calc_mode, which_pedicel))
 
         # publish test pointcloud2 message
         self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
@@ -143,9 +143,9 @@ class Synthesis:
         print("n_pedicels:", n_pedicels, "\n")
 
         if n_pedicels != 0:
-            if which_tomato > n_pedicels - 1:
-                raise Exception("which_tomato must be an integer in the range 0, ..., n_pedicels-1")
-            mask_pedicel_sorted = mask_pedicel_sorted[which_tomato:]
+            if which_pedicel > n_pedicels - 1:
+                raise Exception("which_pedicel must be an integer in the range 0, ..., n_pedicels-1")
+            mask_pedicel_sorted = mask_pedicel_sorted[which_pedicel:]
 
         # if mask_pedicel_sorted is empty then this loop is skipped. 
         for this_pedicel in mask_pedicel_sorted:
