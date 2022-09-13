@@ -156,92 +156,115 @@ class Synthesis:
             x_end = this_pedicel[this_pedicel[:,0]==np.max(this_pedicel[:,0])][0,1] # index zero since there are probs multiple
             y_end = this_pedicel[this_pedicel[:,0]==np.max(this_pedicel[:,0])][0,0] # index zero since there are probs multiple
             # if that end point is within a tomato bbox, obtain a small patch centered around the tomato mask
-            tomato_is_ripe = False
+            overlapping_tomatoes = []
+            xy_centers = []
             for j, this_tomato in enumerate(self.bbox_tomato):
-                x_min, y_min, w, h = this_tomato[:4]
-                x_max = x_min + w
-                y_max = y_min + h
+#                x_min, y_min, w, h = this_tomato[:4]
+#                x_max = x_min + w
+#                y_max = y_min + h
+#                x_center = x_min + w/2
+#                y_center = y_min + h/2
+                x_min, y_min, x_max, y_max = this_tomato[:4]
+                x_center = (x_min + x_max) / 2
+                y_center = (y_min + y_max) / 2
                 if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
-                    # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
-                    mask_indices = self.mask_tomato[j].astype(int)
-                    # probably unnecessary to reduce if just using rgb info
-                    tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]] # should be nx3
-                    rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")
-                    tomato_pixels = tomato_pixels[rgb_not_zero, :]
-                    r, g, b = tomato_pixels[:,0], tomato_pixels[:,1], tomato_pixels[:,2]
-                    ripeness = np.sort((r - g)/(r + g + b))
-                    lower_index = int(ripeness_percentile * len(ripeness))
-                    upper_index = int((1 - ripeness_percentile) * len(ripeness))
-                    ripeness = np.mean(ripeness[lower_index: upper_index])
-                    if ripeness < ripeness_threshold:
-                        # send this info to the manipulator  
-                        self.this_pedicel = this_pedicel
-                        pedicel_xyz = self.xyz[y, x, :]
-                        x_glob, y_glob, z_glob = pedicel_xyz[:, 0], pedicel_xyz[:, 1], pedicel_xyz[:, 2]
+                    overlapping_tomatoes.append(j)
+                    xy_centers.append([x_center, y_center])
+            
+            dists = []
+            if len(overlapping_tomatoes) > 1:
+                for xy_center in xy_centers:
+                    dist = np.sqrt((xy_center[0] - x_end)**2 + (xy_center[1] - y_end)**2)
+                    #dist = np.abs(x_center - x_end)
+                    dists.append(dist)
+                j_final = overlapping_tomatoes[dists.index(min(dists))]
+            elif len(overlapping_tomatoes) == 1:
+                j_final = overlapping_tomatoes[0]
+            else: # zero
+                j_final = None
 
-                        # calculate tomato center
-                        tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
-                        tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
-                        print("tomato_center:", tomato_center)
-                        self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
+            print("overlapping_tomatoes", overlapping_tomatoes)
+            print("j_final", j_final)
+            print("dists", dists)
 
-                        cut_point, dir_vector, pedicel_end, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center, tomato_r=tomato_r)
+            if j_final is not None:
+                # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
+                mask_indices = self.mask_tomato[j_final].astype(int)
+                # probably unnecessary to reduce if just using rgb info
+                tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]] # should be nx3
+                rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")
+                tomato_pixels = tomato_pixels[rgb_not_zero, :]
+                r, g, b = tomato_pixels[:,0], tomato_pixels[:,1], tomato_pixels[:,2]
+                ripeness = np.sort((r - g)/(r + g + b))
+                lower_index = int(ripeness_percentile * len(ripeness))
+                upper_index = int((1 - ripeness_percentile) * len(ripeness))
+                ripeness = np.mean(ripeness[lower_index: upper_index])
+                if ripeness < ripeness_threshold:
+                    # send this info to the manipulator  
+                    self.this_pedicel = this_pedicel
+                    pedicel_xyz = self.xyz[y, x, :]
+                    x_glob, y_glob, z_glob = pedicel_xyz[:, 0], pedicel_xyz[:, 1], pedicel_xyz[:, 2]
 
-                        # cutpoint
-                        cut_point_msg = CutPoint()
-                        point = Point32()
-                        point.x, point.y, point.z = cut_point
-                        cut_point_msg.xyz = point
-                        # direction vector
-                        dir_vector_msg = Vector3()
-                        dir_vector_msg.x, dir_vector_msg.y, dir_vector_msg.z = dir_vector
-                        cut_point_msg.tangent = dir_vector_msg
-                        self.result_msg = cut_point_msg
+                    # calculate tomato center
+                    tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
+                    tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
+                    print("tomato_center:", tomato_center)
+                    self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
 
-                        # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
-                        vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
-                        vec2 = dir_vector # scissor coordinates
-                        self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
-                        self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
-                        self.translation = tuple(cut_point * 10**(-3)) # mm to m
+                    cut_point, dir_vector, pedicel_end, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center, tomato_r=tomato_r)
+
+                    # cutpoint
+                    cut_point_msg = CutPoint()
+                    point = Point32()
+                    point.x, point.y, point.z = cut_point
+                    cut_point_msg.xyz = point
+                    # direction vector
+                    dir_vector_msg = Vector3()
+                    dir_vector_msg.x, dir_vector_msg.y, dir_vector_msg.z = dir_vector
+                    cut_point_msg.tangent = dir_vector_msg
+                    self.result_msg = cut_point_msg
+
+                    # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
+                    vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
+                    vec2 = dir_vector # scissor coordinates
+                    self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
+                    self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
+                    self.translation = tuple(cut_point * 10**(-3)) # mm to m
     
-                        # visualize curve-fitted polynomial
-                        rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
-                        self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
+                    # visualize curve-fitted polynomial
+                    rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
+                    self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
     
-    #                    # save result as matlab matrices
-    #                    savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
-    #                    x_curve = np.polyval(coefs_yx, y_glob)
-    #                    z_curve = np.polyval(coefs_yz, y_glob)
-    #                    curve = np.vstack((x_curve, y_glob, z_curve)).T
-    #                    savemat("to_local/point_clouds/curve" + str(j) + ".mat", {"curve": curve})
-    #                    savemat("to_local/point_clouds/point" + str(j) + ".mat", {"point": [x_pred, y_cut, z_pred]})
-    #                    mag_max = 20
-    #                    t = np.array([x_pred, y_cut, z_pred])
-    #                    tangent_line = np.vstack([mag * r + t for mag in np.linspace(-mag_max, mag_max, 30)])
-    #                    savemat("to_local/point_clouds/tangent" + str(j) + ".mat", {"tangent": tangent_line})
-    #                    savemat("to_local/point_clouds/image.mat", {"image": self.im_array})
+    #                # save result as matlab matrices
+    #                savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
+    #                x_curve = np.polyval(coefs_yx, y_glob)
+    #                z_curve = np.polyval(coefs_yz, y_glob)
+    #                curve = np.vstack((x_curve, y_glob, z_curve)).T
+    #                savemat("to_local/point_clouds/curve" + str(j) + ".mat", {"curve": curve})
+    #                savemat("to_local/point_clouds/point" + str(j) + ".mat", {"point": [x_pred, y_cut, z_pred]})
+    #                mag_max = 20
+    #                t = np.array([x_pred, y_cut, z_pred])
+    #                tangent_line = np.vstack([mag * r + t for mag in np.linspace(-mag_max, mag_max, 30)])
+    #                savemat("to_local/point_clouds/tangent" + str(j) + ".mat", {"tangent": tangent_line})
+    #                savemat("to_local/point_clouds/image.mat", {"image": self.im_array})
     #
-    #                    # save result as numpy arrays
-    #                    np.save("to_local/point_clouds/xyz.npy", self.xyz)
-    #                    np.save("to_local/point_clouds/curve" + str(j) + ".npy", curve)
-    #                    np.save("to_local/point_clouds/point" + str(j) + ".npy", [x_pred, y_cut, z_pred])
-    #                    np.save("to_local/point_clouds/tangent" + str(j) + ".npy", tangent_line)
-    #                    np.save("to_local/point_clouds/image.npy", self.im_array)
-    #                    
-    #                    plt.imshow(self.depth)
-    #                    plt.savefig("to_local/depth.png")
-    #                    
-    #                    np.save("to_local/xyz.npy", self.xyz)
-    #                    print(np.min(self.xyz[:,:,2]))
-    #                    print(np.max(self.xyz[:,:,2]))
+    #                # save result as numpy arrays
+    #                np.save("to_local/point_clouds/xyz.npy", self.xyz)
+    #                np.save("to_local/point_clouds/curve" + str(j) + ".npy", curve)
+    #                np.save("to_local/point_clouds/point" + str(j) + ".npy", [x_pred, y_cut, z_pred])
+    #                np.save("to_local/point_clouds/tangent" + str(j) + ".npy", tangent_line)
+    #                np.save("to_local/point_clouds/image.npy", self.im_array)
+    #                
+    #                plt.imshow(self.depth)
+    #                plt.savefig("to_local/depth.png")
+    #                
+    #                np.save("to_local/xyz.npy", self.xyz)
+    #                print(np.min(self.xyz[:,:,2]))
+    #                print(np.max(self.xyz[:,:,2]))
     
-                        self.tf_computed = True
-                        tomato_is_ripe = True
+                    self.tf_computed = True
+            break
     
-                        break
-            if tomato_is_ripe:
-                break
     
 def main():
     rospy.init_node("synthesis", anonymous=True)
@@ -291,6 +314,7 @@ def main():
                 synthesizer.flg = "0"
                 synthesizer.inst_seg_finished = False
                 synthesizer.sm_finished = False
+                synthesizer.tf_computed = False
 
 
 
