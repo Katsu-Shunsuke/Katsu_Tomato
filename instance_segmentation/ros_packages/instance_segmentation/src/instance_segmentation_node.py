@@ -20,7 +20,7 @@ from instance_segmentation.msg import InstSegRes # need to edit CMakeLists.txt a
 class InstanceSegmentation:
     def __init__(self):
         # topics to subscribe and publish to
-        self.im_topic = "/zedm/zed_node/left/image_rect_color" # left image because disparity map is on left image.
+        self.im_topic = "/zedm/zed_node/left/image_rect_color_synchronized" # left image because disparity map is on left image.
 #        self.flg_topic = "instance_segmentation_flg"
         self.flg_topic = "stereo_matching_flg"
         self.result_arr_topic = "instance_segmentation_array_output"

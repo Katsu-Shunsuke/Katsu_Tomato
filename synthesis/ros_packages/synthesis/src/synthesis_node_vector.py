@@ -27,7 +27,7 @@ from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLis
 class Synthesis:
     def __init__(self):
         # topics to subscribe and publish to
-        self.im_topic = "/zedm/zed_node/left/image_rect_color" # left image because disparity map is on left image.
+        self.im_topic = "/zedm/zed_node/left/image_rect_color_synchronized" # left image because disparity map is on left image.
 #        self.flg_topic = "synthesis_flg"
         self.flg_topic = "stereo_matching_flg"
         self.result_topic = "synthesis_cutpoint_output"
