@@ -312,7 +312,7 @@ def main():
                     synthesizer.exit_code_pub.publish(exit_code)
             
                 synthesizer.flg = "0"
-                synthesizer.inst_seg_finished = False
+                synthesizer.instseg_finished = False
                 synthesizer.sm_finished = False
                 synthesizer.tf_computed = False
 
