@@ -42,6 +42,7 @@ def main():
     pub_right_image = rospy.Publisher(synchronizer.right_image_out, Image, queue_size=1)
     while not rospy.is_shutdown():
         if synchronizer.flg == "1":
+            print("Publish synchronized image pair.")
             pub_right_image.publish(synchronizer.right_image_msg)
             pub_left_image.publish(synchronizer.left_image_msg)
             synchronizer.flg = "0"

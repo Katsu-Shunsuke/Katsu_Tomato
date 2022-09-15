@@ -22,7 +22,6 @@ class InstanceSegmentation:
         # topics to subscribe and publish to
         self.im_topic = "/zedm/zed_node/left/image_rect_color_synchronized" # left image because disparity map is on left image.
 #        self.flg_topic = "instance_segmentation_flg"
-        self.flg_topic = "stereo_matching_flg"
         self.result_arr_topic = "instance_segmentation_array_output"
         self.result_im_topic = "instance_segmentation_image_output"
         self.config_file = '../cascade_mask_rcnn_r50_fpn_1x_tomato.py'
@@ -33,7 +32,6 @@ class InstanceSegmentation:
         self.im_array = None
         self.result = None
         self.maskrcnn = None
-        self.flg = None
         self.result_arr_msg = None
         self.result_im_msg = None
 
@@ -60,10 +58,6 @@ class InstanceSegmentation:
             threshold_per_class = [threshold_stem, threshold_tomato, threshold_pedicel, threshold_sepal]
             result_im = visualize_output(self.im_array, self.result, threshold_per_class=threshold_per_class, show_bbox=True, save_im=False)
             self.result_im_msg = CvBridge().cv2_to_imgmsg(result_im, "rgb8")
-
-    def update_flg(self, msg):
-        if msg.data == "1" and self.im_array is not None:
-            self.flg = "1"
 
     def to_InstSegRes(self, result):
         msg = InstSegRes()
@@ -97,13 +91,12 @@ def main():
     rospy.init_node("instance_segmentation", anonymous=True)
     model = InstanceSegmentation()
     rospy.Subscriber(model.im_topic, Image, model.im_callback)
-    rospy.Subscriber(model.flg_topic, String, model.update_flg)
     pub_arr = rospy.Publisher(model.result_arr_topic, InstSegRes, queue_size=1)
     if model.publish_filtered_result_image:
         pub_im = rospy.Publisher(model.result_im_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        if model.flg == "1":
+        if model.im_array is not None:
             rospy.loginfo("Start instance segmentation.")
             model.main_callback()
     #            rospy.loginfo(model.result_msg)
@@ -111,7 +104,7 @@ def main():
             if model.publish_filtered_result_image:
                 pub_im.publish(model.result_im_msg)
     #            r.sleep()
-            model.flg = "0"
+            model.im_array = None
 
 
 #    if sm.flg == "1":
