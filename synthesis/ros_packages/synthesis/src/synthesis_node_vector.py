@@ -21,7 +21,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
 from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output, curve_fitting
-from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers 
+from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
@@ -39,6 +39,7 @@ class Synthesis:
         self.instseg_im_filtered_topic = "instance_segmentation_filtered_image_output"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         self.publish_filtered_instseg_image = False
+        self.calc_all_modes = True
         # output of callback methods
         self.depth = None
         self.xyz = None
@@ -64,6 +65,7 @@ class Synthesis:
         self.instseg_finished = False
         self.sm_finished = False
         self.tf_computed = False
+        self.quaternions_using_all_modes = None
 
     def im_callback(self, msg):
         print("received image")
@@ -222,7 +224,10 @@ class Synthesis:
                     vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
                     vec2 = dir_vector # scissor coordinates
                     self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
-                    self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
+                    if self.calc_all_modes:
+                       self.quaternions_using_all_modes = calc_all_pedicel_quaternions(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end) 
+                    else:
+                        self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
                     self.translation = tuple(cut_point * 10**(-3)) # mm to m
     
                     # visualize curve-fitted polynomial
@@ -295,7 +300,11 @@ def main():
                 pub_tomato_center_pointcloud.publish(synthesizer.tomato_center_point_cloud)
                 pub_pedicel_end_pointcloud.publish(synthesizer.pedicel_end_point_cloud)
     #            r.sleep()
-                br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicel", "/zedm_left_camera_optical_frame")
+                if synthesizer.calc_all_modes:
+                    for i, quaternion in enumerate(synthesizer.quaternions_using_all_modes):
+                        br.sendTransform(synthesizer.translation, quaternion, rospy.Time.now(), "/tomato_pedicel_mode_" + str(i), "/zedm_left_camera_optical_frame")
+                else:
+                    br.sendTransform(synthesizer.translation, synthesizer.quaternion, rospy.Time.now(), "/tomato_pedicel", "/zedm_left_camera_optical_frame")
                 exit_code.exit_code = ExitCode.CODE_PEDICEL_DETECTION_SUCCESS
                 synthesizer.exit_code_pub.publish(exit_code)
             else:

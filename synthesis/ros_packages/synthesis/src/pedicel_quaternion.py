@@ -25,7 +25,7 @@ def rotation_matrix_from_vectors(vec1, vec2):
     else:
         return np.eye(3) #cross of all zeros only occurs on identical directions
 
-def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedicel_end=None, mode=3):
+def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedicel_end=None, mode=4):
     """
     calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
     mode 0: no constraint
@@ -113,3 +113,12 @@ def remove_outliers(x, max_deviations=0.5):
     centered = x - mean
     within_stds = centered < max_deviations * std # boolean array, True means within deviation
     return within_stds
+
+def calc_all_pedicel_quaternions(vec1, vec2, cutpoint=None, tomato_center=None, pedicel_end=None):
+    n_modes = 5
+    quaternions = []
+    for mode in range(n_modes):
+        quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cutpoint, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=mode)
+        quaternions.append(quaternion)
+    return quaternions
+
