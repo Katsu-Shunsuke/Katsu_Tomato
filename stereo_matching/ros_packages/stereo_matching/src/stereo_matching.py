@@ -27,7 +27,6 @@ class StereoMatching:
 #        self.left_topic = "best_view_im_left"
         self.right_topic = "/zedm/zed_node/right/image_rect_color_synchronized"
         self.left_topic = "/zedm/zed_node/left/image_rect_color_synchronized"
-        self.flg_topic = "stereo_matching_flg"
         self.depth_arr_topic = "aanet_depth_array_output"
         self.depth_im_topic = "aanet_depth_image_output"
 #        self.pretrained_aanet = "aanet/pretrained/aanet_sceneflow-5aa5a24e.pth"
@@ -43,7 +42,6 @@ class StereoMatching:
         self.depth = None
         self.aanet = None
         self.device = None
-        self.flg = None
         self.depth_arr_msg = None
         self.depth_im_msg = None
 
@@ -64,10 +62,6 @@ class StereoMatching:
         im_resized = cv2.resize(im_rgb, dsize=self.in_shape)
         self.array_left = np.array(im_resized)
 
-    def update_flg(self, msg):
-        if msg.data == "1" and self.array_right is not None and self.array_left is not None:
-            self.flg = "1"
-    
     def main_callback(self):
         if self.aanet is None or self.device is None:
             self.aanet, self.device = load_aanet(pretrained_aanet=self.pretrained_aanet)
@@ -98,18 +92,18 @@ def main():
     rospy.Subscriber(sm.camera_topic, String, sm.camera_name_callback)
     rospy.Subscriber(sm.right_topic, Image, sm.right_callback)
     rospy.Subscriber(sm.left_topic, Image, sm.left_callback)
-    rospy.Subscriber(sm.flg_topic, String, sm.update_flg)
     pub_depth_arr = rospy.Publisher(sm.depth_arr_topic, Float32MultiArray, queue_size=1)
     pub_depth_im = rospy.Publisher(sm.depth_im_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
     while not rospy.is_shutdown():
-        if sm.flg == "1":
+        if sm.array_right is not None and sm.array_left is not None:
             rospy.loginfo("Start stereo matching.")
             sm.main_callback()
             pub_depth_arr.publish(sm.depth_arr_msg)
             pub_depth_im.publish(sm.depth_im_msg)
 #            r.sleep()
-            sm.flg = "0"
+            sm.array_left = None
+            sm.array_right = None
 
 #    if sm.flg == "1":
 #        pub.publish(sm.depth)
