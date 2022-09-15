@@ -32,6 +32,7 @@ def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedic
     mode 1: set euler[0] and euler[1] to zero
     mode 2: automatically calculate optimal quaternion by rotating about pedicel direction vector
     mode 3: further rotate from mode2 about pedicel x axis
+    mode 4: compute mode 0, then rotate about pedicel x axis according to tangent plane; basically mode 3 but skips the rotation bit about y axis.
     """
     rot = rotation_matrix_from_vectors(vec1, vec2)
     rot_eye = np.eye(4)
@@ -41,14 +42,15 @@ def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedic
     elif mode == 1:
         euler = tf.transformations.euler_from_matrix(rot_eye)
         quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
-    elif mode == 2 or mode == 3:
+    elif mode == 2 or mode == 3 or mode == 4:
         if cutpoint is None or tomato_center is None:
             raise Exception("Must provide cutpoint and/or tomato_center")
-        theta_deg = calc_theta(vec2, tomato_center, cutpoint, rot)
-        print("theta_deg:", theta_deg)
-        rot_about_pedicel_y = calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
-        rot = rot_about_pedicel_y @ rot
-        if mode == 3:
+        if mode == 2 or mode == 3:
+            theta_deg = calc_theta(vec2, tomato_center, cutpoint, rot)
+            print("theta_deg:", theta_deg)
+            rot_about_pedicel_y = calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
+            rot = rot_about_pedicel_y @ rot
+        if mode == 3 or mode == 4:
             if pedicel_end is None:
                 raise Exception("Must provide pedicel_end")
             pedicel_x = rot @ np.array([1, 0, 0])
