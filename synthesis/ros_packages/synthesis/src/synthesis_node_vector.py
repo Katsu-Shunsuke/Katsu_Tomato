@@ -118,9 +118,9 @@ class Synthesis:
 
     def main_callback(self):
         print("running main callback")
-        bbox_top = 0.5
+        bbox_top = rospy.get_param("bbox_top", 0.5)
         ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
-        ripeness_percentile = 0.25
+        ripeness_percentile = rospy.get_param("ripeness_percentile", 0.25)
         pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 3)
         which_pedicel = rospy.get_param("which_pedicel", 0)
         
