@@ -4,6 +4,7 @@ import os
 import sys
 import rospy
 import tf
+import warnings
 
 import cv2
 import numpy as np
@@ -140,7 +141,10 @@ class Synthesis:
 
         if n_pedicels != 0:
             if which_pedicel > n_pedicels - 1:
-                raise Exception("which_pedicel must be an integer in the range 0, ..., n_pedicels-1")
+                warnings.warn("which_pedicel >= n_pedicels-1; index out of range so index 0 is used instead.")
+                which_pedicel = 0
+#                which_pedicel = n_pedicels - 1
+#                raise Exception("which_pedicel must be an integer in the range 0, ..., n_pedicels-1")
             mask_pedicel_sorted = mask_pedicel_sorted[which_pedicel:]
 
         # if mask_pedicel_sorted is empty then this loop is skipped. 
