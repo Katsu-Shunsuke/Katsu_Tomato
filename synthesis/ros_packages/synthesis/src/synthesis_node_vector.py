@@ -183,7 +183,7 @@ class Synthesis:
             else: # zero
                 j_final = None
 
-            print("\noverlapping_tomatoes", overlapping_tomatoes)
+            print("overlapping_tomatoes", overlapping_tomatoes)
             print("j_final", j_final)
             print("dists", dists, "\n")
 
@@ -191,7 +191,7 @@ class Synthesis:
                 # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
                 mask_indices = self.mask_tomato[j_final].astype(int)
                 # probably unnecessary to reduce if just using rgb info
-                tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]] # should be nx3
+                tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]].astype(np.float64) # should be nx3, also must be float because uint8 causes overflow
                 rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")
                 tomato_pixels = tomato_pixels[rgb_not_zero, :]
                 r, g, b = tomato_pixels[:,0], tomato_pixels[:,1], tomato_pixels[:,2]
@@ -199,6 +199,7 @@ class Synthesis:
                 lower_index = int(ripeness_percentile * len(ripeness))
                 upper_index = int((1 - ripeness_percentile) * len(ripeness))
                 ripeness = np.mean(ripeness[lower_index: upper_index])
+                print("ripeness", ripeness, "\n")
                 if ripeness < ripeness_threshold:
                     # send this info to the manipulator  
                     self.this_pedicel = this_pedicel
