@@ -183,9 +183,9 @@ class Synthesis:
             else: # zero
                 j_final = None
 
-            print("overlapping_tomatoes", overlapping_tomatoes)
+            print("\noverlapping_tomatoes", overlapping_tomatoes)
             print("j_final", j_final)
-            print("dists", dists)
+            print("dists", dists, "\n")
 
             if j_final is not None:
                 # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
@@ -208,7 +208,6 @@ class Synthesis:
                     # calculate tomato center
                     tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
                     tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
-                    print("tomato_center:", tomato_center)
                     self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
 
                     cut_point, dir_vector, pedicel_end, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center, tomato_r=tomato_r)
