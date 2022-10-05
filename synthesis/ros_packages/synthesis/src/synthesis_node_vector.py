@@ -266,7 +266,7 @@ class Synthesis:
     #                print(np.max(self.xyz[:,:,2]))
     
                     self.tf_computed = True
-            break
+                    break
     
     
 def main():
