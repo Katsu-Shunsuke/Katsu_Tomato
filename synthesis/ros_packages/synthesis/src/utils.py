@@ -2,6 +2,8 @@ import rospy
 from std_msgs.msg import Header, Float32MultiArray, UInt8MultiArray, MultiArrayDimension
 from sensor_msgs.msg import PointCloud2, PointField
 import sensor_msgs.point_cloud2 as pc2
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 
 import io
 import cv2
@@ -10,6 +12,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 from scipy import interpolate
+from sklearn.decomposition import PCA
 
 def numpy_to_rosarray(array, dtype):
     if dtype == "float32":
@@ -253,6 +256,36 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
         raise Exception("Unrecognized mode.")
 
     return cut_point, dir_vector, pedicel_end, curve 
+
+def pca(xyz):
+    pca = PCA(n_components=3)
+    pca.fit(xyz)
+    M = pca.components_
+    return M
+
+def calc_mean_point(xyz):
+    p_mean = np.mean(xyz, axis=0)
+    i_mean = np.argmin(
+        np.sum(
+            (xyz - np.tile(p_mean, (len(xyz), 1))) ** 2,
+            axis=1
+        )
+    )
+    xyz_mean = xyz[i_mean, :]
+    return xyz_mean
+
+def visualize_eigen_vectors(p, M):
+    p1 = np.vstack([p + c * M[0, :] for c in range(40)]) # largest eigen value
+    p2 = np.vstack([p + c * M[1, :] for c in range(17)])
+    p3 = np.vstack([p + c * M[2, :] for c in range(8)]) # smallest eigen value
+    eigen_pc = np.vstack((p, p1, p2, p3))
+    return eigen_pc
+
+def indices_within_circle(im_shape, c, r_max):
+    j, i = np.meshgrid(np.arange(im_shape[1]), np.arange(im_shape[0]))
+    r = np.sqrt((i - c[0])**2 + (j - c[1])**2)
+    within_circle = r < r_max # boolean mask
+    return within_circle
 
 
 

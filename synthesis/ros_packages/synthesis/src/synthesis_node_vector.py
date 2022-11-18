@@ -17,12 +17,14 @@ from std_msgs.msg import String, Float32MultiArray, Float64MultiArray, MultiArra
 from geometry_msgs.msg import Point32, Vector3
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
+from visualization_msgs.msg import Marker
 
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
-from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output, curve_fitting
-from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions
+from utils import (rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output,
+curve_fitting, pca, calc_mean_point, visualize_eigen_vectors, indices_within_circle)
+from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions, remove_outliers
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
@@ -38,6 +40,9 @@ class Synthesis:
         self.tomato_center_pc2_topic = "synthesis_tomato_center_pc2_output"
         self.pedicel_end_pc2_topic = "synthesis_pedicel_end_pc2_output"
         self.instseg_im_filtered_topic = "instance_segmentation_filtered_image_output"
+        self.pca_eigen_raw_topic = "pca_eigen_raw"
+        self.pca_eigen_corrected_topic = "pca_eigen_corrected"
+        self.pedicel_xyz_topic = "pedicel_xyz"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         self.publish_filtered_instseg_image = False
         self.calc_all_modes = True
@@ -67,6 +72,9 @@ class Synthesis:
         self.sm_finished = False
         self.tf_computed = False
         self.quaternions_using_all_modes = None
+        self.pca_eigen_raw = None
+        self.pca_eigen_corrected = None
+        self.pedicel_xyz = None
 
     def im_callback(self, msg):
         print("received image")
@@ -121,14 +129,14 @@ class Synthesis:
 
     def main_callback(self):
         print("running main callback")
-        bbox_top = rospy.get_param("bbox_top", 0.5)
+        bbox_top = rospy.get_param("bbox_top", 1)
         ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
         ripeness_percentile = rospy.get_param("ripeness_percentile", 0.25)
         pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 4)
         which_pedicel = rospy.get_param("which_pedicel", 0)
         
-        print("\nbbox_top: {}\nripeness_threshold: {}\nripeness_percentile: {}\npedicel_calc_mode: {}\nwhich_pedicel: {}\n".format(bbox_top,
-            ripeness_threshold, ripeness_percentile, pedicel_calc_mode, which_pedicel))
+        print("\nbbox_top: {}\nripeness_threshold: {}\nripeness_percentile: {}\npedicel_calc_mode: {}\nwhich_pedicel: {}\n".format(
+            bbox_top, ripeness_threshold, ripeness_percentile, pedicel_calc_mode, which_pedicel))
 
         # publish test pointcloud2 message
         self.image_point_cloud = generate_pc2_message(self.xyz, self.im_array)
@@ -150,123 +158,166 @@ class Synthesis:
         # if mask_pedicel_sorted is empty then this loop is skipped. 
         for this_pedicel in mask_pedicel_sorted:
             # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
-            x = this_pedicel[:,1].astype("int") # actually, better to send msg as uint32
-            y = this_pedicel[:,0].astype("int")
-            # obtain the end with smaller y value
-            x_end = this_pedicel[this_pedicel[:,0]==np.max(this_pedicel[:,0])][0,1] # index zero since there are probs multiple
-            y_end = this_pedicel[this_pedicel[:,0]==np.max(this_pedicel[:,0])][0,0] # index zero since there are probs multiple
-            # if that end point is within a tomato bbox, obtain a small patch centered around the tomato mask
-            overlapping_tomatoes = []
-            xy_centers = []
-            for j, this_tomato in enumerate(self.bbox_tomato):
-#                x_min, y_min, w, h = this_tomato[:4]
-#                x_max = x_min + w
-#                y_max = y_min + h
-#                x_center = x_min + w/2
-#                y_center = y_min + h/2
-                x_min, y_min, x_max, y_max = this_tomato[:4]
-                x_center = (x_min + x_max) / 2
-                y_center = (y_min + y_max) / 2
-                if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
-                    overlapping_tomatoes.append(j)
-                    xy_centers.append([x_center, y_center])
+            x = this_pedicel[:, 1].astype("int") # actually, better to send msg as uint32
+            y = this_pedicel[:, 0].astype("int")
+
+            # ==============================
+            # Make changes from here on
+            pedicel_xyz = self.xyz[y, x, :]
+            pedicel_xyz = pedicel_xyz[remove_outliers(pedicel_xyz[:,2], max_deviations=0.7), :] # remove incorrect points at object boundary
+
+            # perform pca. M is matrix of eigen vectors, eigen are eigen vector point clouds for visualization
+            M = pca(pedicel_xyz)
+            pedicel_xyz_mean = calc_mean_point(pedicel_xyz)
+            eigen = visualize_eigen_vectors(pedicel_xyz_mean, M)
+            self.pca_eigen_raw = generate_pc2_message(
+                eigen,
+                np.tile(np.array([0, 255, 255]), (len(eigen),1)),
+                sampling_prop=1
+            )
+            self.pedicel_xyz = generate_pc2_message(
+                pedicel_xyz,
+                np.tile(np.array([255, 0, 255]), (len(pedicel_xyz),1))
+            )
+
+            # find the two endpoints of pedicel along direction with largest eigen value
+            pedicel_xyz_transformed = pedicel_xyz @ M.T
+            i_max = np.argmax(pedicel_xyz_transformed[:, 0])
+            i_min = np.argmin(pedicel_xyz_transformed[:, 0])
+            pedicel_end_max = pedicel_xyz_transformed[i_max, :]
+            pedicel_end_min = pedicel_xyz_transformed[i_min, :]
+            pedicel_end_max_2d = this_pedicel[i_max, :]
+            pedicel_end_min_2d = this_pedicel[i_min, :]
+
+            # search if there is a sepal attached to either of the pedicel ends
+            r_search = 20 # in pixels
+            intersect_end_max = 0
+            intersect_end_min = 0
+            for i_sepal, this_sepal in enumerate(self.mask_sepal):
+                sepal_center = np.mean(this_sepal, axis=0)
+                sepal_circle = indices_within_circle(self.im_array.shape, sepal_center, r_search)
+                pedicel_end_max_circle = indices_within_circle(self.im_array.shape, pedicel_end_max_2d, r_search)
+                pedicel_end_min_circle = indices_within_circle(self.im_array.shape, pedicel_end_min_2d, r_search)
+                plt.imshow(pedicel_end_max_circle)
+                plt.savefig("circle.png")
+
+                if np.logical_and(pedicel_end_max_circle, sepal_circle).any():
+                    intersect_end_max += 1
+                if np.logical_and(pedicel_end_min_circle, sepal_circle).any():
+                    intersect_end_min += 1
             
-            dists = []
-            if len(overlapping_tomatoes) > 1:
-                for xy_center in xy_centers:
-                    dist = np.sqrt((xy_center[0] - x_end)**2 + (xy_center[1] - y_end)**2)
-                    #dist = np.abs(x_center - x_end)
-                    dists.append(dist)
-                j_final = overlapping_tomatoes[dists.index(min(dists))]
-            elif len(overlapping_tomatoes) == 1:
-                j_final = overlapping_tomatoes[0]
-            else: # zero
-                j_final = None
-
-            print("overlapping_tomatoes", overlapping_tomatoes)
-            print("j_final", j_final)
-            print("dists", dists, "\n")
-
-            if j_final is not None:
-                # compute ripeness, and if ripeness is above a certain threshold return coordniate of point half way along the pedicel
-                mask_indices = self.mask_tomato[j_final].astype(int)
-                # probably unnecessary to reduce if just using rgb info
-                tomato_pixels = self.im_array[mask_indices[:,0], mask_indices[:,1]].astype(np.float64) # should be nx3, also must be float because uint8 causes overflow
-                rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")
-                tomato_pixels = tomato_pixels[rgb_not_zero, :]
-                r, g, b = tomato_pixels[:,0], tomato_pixels[:,1], tomato_pixels[:,2]
-                ripeness = np.sort((r - g)/(r + g + b))
-                lower_index = int(ripeness_percentile * len(ripeness))
-                upper_index = int((1 - ripeness_percentile) * len(ripeness))
-                ripeness = np.mean(ripeness[lower_index: upper_index])
-                print("ripeness", ripeness, "\n")
-                if ripeness < ripeness_threshold:
-                    # send this info to the manipulator  
-                    self.this_pedicel = this_pedicel
-                    pedicel_xyz = self.xyz[y, x, :]
-                    x_glob, y_glob, z_glob = pedicel_xyz[:, 0], pedicel_xyz[:, 1], pedicel_xyz[:, 2]
-
-                    # calculate tomato center
-                    tomato_xyz = self.xyz[mask_indices[:,0], mask_indices[:,1], :] # should be nx3
-                    tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
-                    self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
-
-                    cut_point, dir_vector, pedicel_end, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center, tomato_r=tomato_r)
-
-                    # cutpoint
-                    cut_point_msg = CutPoint()
-                    point = Point32()
-                    point.x, point.y, point.z = cut_point
-                    cut_point_msg.xyz = point
-                    # direction vector
-                    dir_vector_msg = Vector3()
-                    dir_vector_msg.x, dir_vector_msg.y, dir_vector_msg.z = dir_vector
-                    cut_point_msg.tangent = dir_vector_msg
-                    self.result_msg = cut_point_msg
-
-                    # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
-                    vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
-                    vec2 = dir_vector # scissor coordinates
-                    self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
-                    if self.calc_all_modes:
-                       self.quaternions_using_all_modes = calc_all_pedicel_quaternions(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end) 
-                    else:
-                        self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
-                    self.translation = tuple(cut_point * 10**(-3)) # mm to m
+            print(intersect_end_max)
+            print(intersect_end_min)
+            if intersect_end_max > 0 and intersect_end_min == 0:
+                pedicel_end_with_sepal_ij = pedicel_end_max_2d
+                if intersect_end_max > 1:
+                    warnings.warn("More than 1 overlapping sepal at pedicel_end_max")
+            elif intersect_end_min > 0 and intersect_end_max == 0:
+                pedicel_end_with_sepal_ij = pedicel_end_min_2d
+                if intersect_end_min > 1:
+                    warnings.warn("More than 1 overlapping sepal at pedicel_end_min")
+            elif intersect_end_min > 0 and intersect_end_max > 0:
+                pedicel_end_with_sepal_ij = pedicel_end_max_2d if pedicel_end_max_2d[0] - pedicel_end_min_2d[0] > 0 else pedicel_end_min_2d
+                warnings.warn("Both pedicel ends intersect with a sepal.")
+            else: # both equal zero
+                pedicel_end_with_sepal_ij = None
+                
+            if pedicel_end_with_sepal_ij is not None:
+                # find if any tomato overlaps
+                y_end, x_end = pedicel_end_with_sepal_ij.astype("int")
+                overlapping_tomatoes = []
+                xy_centers = []
+                for j, this_tomato in enumerate(self.bbox_tomato):
+                    x_min, y_min, x_max, y_max = this_tomato[:4]
+                    x_center = (x_min + x_max) / 2
+                    y_center = (y_min + y_max) / 2
+                    if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
+                        overlapping_tomatoes.append(j)
+                        xy_centers.append([x_center, y_center])
+                
+                dists = []
+                if len(overlapping_tomatoes) > 1:
+                    for xy_center in xy_centers:
+                        dist = np.sqrt((xy_center[0] - x_end)**2 + (xy_center[1] - y_end)**2)
+                        #dist = np.abs(x_center - x_end)
+                        dists.append(dist)
+                    j_final = overlapping_tomatoes[dists.index(min(dists))]
+                elif len(overlapping_tomatoes) == 1:
+                    j_final = overlapping_tomatoes[0]
+                else: # zero
+                    j_final = None
     
-                    # visualize curve-fitted polynomial
-                    rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
-                    self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
+                print("overlapping_tomatoes", overlapping_tomatoes)
+                print("j_final", j_final)
+                print("dists", dists, "\n")
     
-    #                # save result as matlab matrices
-    #                savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
-    #                x_curve = np.polyval(coefs_yx, y_glob)
-    #                z_curve = np.polyval(coefs_yz, y_glob)
-    #                curve = np.vstack((x_curve, y_glob, z_curve)).T
-    #                savemat("to_local/point_clouds/curve" + str(j) + ".mat", {"curve": curve})
-    #                savemat("to_local/point_clouds/point" + str(j) + ".mat", {"point": [x_pred, y_cut, z_pred]})
-    #                mag_max = 20
-    #                t = np.array([x_pred, y_cut, z_pred])
-    #                tangent_line = np.vstack([mag * r + t for mag in np.linspace(-mag_max, mag_max, 30)])
-    #                savemat("to_local/point_clouds/tangent" + str(j) + ".mat", {"tangent": tangent_line})
-    #                savemat("to_local/point_clouds/image.mat", {"image": self.im_array})
-    #
-    #                # save result as numpy arrays
-    #                np.save("to_local/point_clouds/xyz.npy", self.xyz)
-    #                np.save("to_local/point_clouds/curve" + str(j) + ".npy", curve)
-    #                np.save("to_local/point_clouds/point" + str(j) + ".npy", [x_pred, y_cut, z_pred])
-    #                np.save("to_local/point_clouds/tangent" + str(j) + ".npy", tangent_line)
-    #                np.save("to_local/point_clouds/image.npy", self.im_array)
-    #                
-    #                plt.imshow(self.depth)
-    #                plt.savefig("to_local/depth.png")
-    #                
-    #                np.save("to_local/xyz.npy", self.xyz)
-    #                print(np.min(self.xyz[:,:,2]))
-    #                print(np.max(self.xyz[:,:,2]))
+                if j_final is not None:
+                    mask_indices = self.mask_tomato[j_final].astype(int)
+                    # probably unnecessary to reduce if just using rgb info
+                    tomato_pixels = self.im_array[mask_indices[:, 0], mask_indices[:, 1]].astype(np.float64) # should be nx3, also must be float because uint8 causes overflow
+                    rgb_not_zero = np.sum(tomato_pixels, axis=1).astype("bool")
+                    tomato_pixels = tomato_pixels[rgb_not_zero, :]
+                    r, g, b = tomato_pixels[:, 0], tomato_pixels[:, 1], tomato_pixels[:, 2]
+                    ripeness = np.sort((r - g) / (r + g + b))
+                    lower_index = int(ripeness_percentile * len(ripeness))
+                    upper_index = int((1 - ripeness_percentile) * len(ripeness))
+                    ripeness = np.mean(ripeness[lower_index: upper_index])
+                    print("ripeness", ripeness, "\n")
+                    if ripeness < ripeness_threshold:
+                        # send this info to the manipulator  
+                        self.this_pedicel = this_pedicel
     
-                    self.tf_computed = True
-                    break
+                        # calculate tomato center
+                        tomato_xyz = self.xyz[mask_indices[:, 0], mask_indices[:, 1], :] # should be nx3
+                        tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
+                        self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
+    
+                        # curve fitting
+                        # first figure out if largest eigen value vector is pointing in which direction
+                        pedicel_end = self.xyz[y_end, x_end, :]
+                        if np.linalg.norm(pedicel_xyz_mean + M[0, :] - pedicel_end) > np.linalg.norm(pedicel_xyz_mean - pedicel_end):
+                            M[0, :] *= -1
+                        if (np.cross(M[0, :], M[1, :]) / M[2, :] < 0).all():
+                            M[2, :] *= -1
+                        eigen_corrected = visualize_eigen_vectors(pedicel_xyz_mean, M) # visualize before the axes get rearranged
+                        M[[0, 1, 2], :] = M[[2, 0, 1], :]
+                        self.pca_eigen_corrected = generate_pc2_message(
+                            eigen_corrected,
+                            np.tile(np.array([0, 255, 255]), (len(eigen_corrected),1)),
+                            sampling_prop=1
+                        )
+                        x_glob, y_glob, z_glob = (pedicel_xyz @ M.T).T
+                        tomato_center_transformed = tomato_center @ M.T
+                        cut_point, dir_vector, pedicel_end_dummy, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center_transformed, tomato_r=tomato_r) # pedicel_end is dummy, only used for non pca version
+                        cut_point, dir_vector, curve = [ting @ np.linalg.inv(M.T) for ting in [cut_point, dir_vector, curve]]
+    
+                        # cutpoint
+                        cut_point_msg = CutPoint()
+                        point = Point32()
+                        point.x, point.y, point.z = cut_point
+                        cut_point_msg.xyz = point
+                        # direction vector
+                        dir_vector_msg = Vector3()
+                        dir_vector_msg.x, dir_vector_msg.y, dir_vector_msg.z = dir_vector
+                        cut_point_msg.tangent = dir_vector_msg
+                        self.result_msg = cut_point_msg
+    
+                        # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
+                        vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
+                        vec2 = dir_vector # scissor coordinates
+                        self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
+                        if self.calc_all_modes:
+                           self.quaternions_using_all_modes = calc_all_pedicel_quaternions(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end) 
+                        else:
+                            self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
+                        self.translation = tuple(cut_point * 10**(-3)) # mm to m
+        
+                        # visualize curve-fitted polynomial
+                        rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
+                        self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
+        
+                        self.tf_computed = True
+                        break
     
     
 def main():
@@ -280,6 +331,9 @@ def main():
     pub_polynomial_pointcloud = rospy.Publisher(synthesizer.polynomial_pc2_topic, PointCloud2, queue_size=1)
     pub_tomato_center_pointcloud = rospy.Publisher(synthesizer.tomato_center_pc2_topic, PointCloud2, queue_size=1)
     pub_pedicel_end_pointcloud = rospy.Publisher(synthesizer.pedicel_end_pc2_topic, PointCloud2, queue_size=1)
+    pub_pca_eigen_raw = rospy.Publisher(synthesizer.pca_eigen_raw_topic, PointCloud2, queue_size=1)
+    pub_pca_eigen_corrected = rospy.Publisher(synthesizer.pca_eigen_corrected_topic, PointCloud2, queue_size=1)
+    pub_pedicel_xyz = rospy.Publisher(synthesizer.pedicel_xyz_topic, PointCloud2, queue_size=1)
     if synthesizer.publish_filtered_instseg_image:
         pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
@@ -303,6 +357,9 @@ def main():
                 pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
                 pub_tomato_center_pointcloud.publish(synthesizer.tomato_center_point_cloud)
                 pub_pedicel_end_pointcloud.publish(synthesizer.pedicel_end_point_cloud)
+                pub_pca_eigen_raw.publish(synthesizer.pca_eigen_raw)
+                pub_pca_eigen_corrected.publish(synthesizer.pca_eigen_corrected)
+                pub_pedicel_xyz.publish(synthesizer.pedicel_xyz)
     #            r.sleep()
                 if synthesizer.calc_all_modes:
                     for i, quaternion in enumerate(synthesizer.quaternions_using_all_modes):
