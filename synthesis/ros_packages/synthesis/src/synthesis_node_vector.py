@@ -43,6 +43,7 @@ class Synthesis:
         self.pca_eigen_raw_topic = "pca_eigen_raw"
         self.pca_eigen_corrected_topic = "pca_eigen_corrected"
         self.pedicel_xyz_topic = "pedicel_xyz"
+        self.pedicel_end_minmax_xyz_topic = "pedicel_end_minmax_xyz"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         self.publish_filtered_instseg_image = False
         self.calc_all_modes = True
@@ -71,10 +72,12 @@ class Synthesis:
         self.instseg_finished = False
         self.sm_finished = False
         self.tf_computed = False
+        self.eigen_computed = False
         self.quaternions_using_all_modes = None
         self.pca_eigen_raw = None
         self.pca_eigen_corrected = None
         self.pedicel_xyz = None
+        self.pedicel_end_minmax_xyz = None
 
     def im_callback(self, msg):
         print("received image")
@@ -195,6 +198,14 @@ class Synthesis:
 #            plt.plot(*pedicel_end_max_2d[::-1], "yo", ms=1)
 #            plt.plot(*pedicel_end_min_2d[::-1], "yo", ms=1)
 #            plt.savefig("pedicel_ends.png")
+
+            self.pedicel_end_minmax_xyz = generate_pc2_message(
+                np.vstack((pedicel_end_max, pedicel_end_min)) @ np.linalg.inv(M.T),
+                np.tile(np.array([255, 0, 255]), (2, 1)),
+                sampling_prop=1
+            )
+
+            self.eigen_computed = True
 
             # search if there is a sepal attached to either of the pedicel ends
             r_search = 20 # in pixels
@@ -341,6 +352,7 @@ def main():
     pub_pca_eigen_raw = rospy.Publisher(synthesizer.pca_eigen_raw_topic, PointCloud2, queue_size=1)
     pub_pca_eigen_corrected = rospy.Publisher(synthesizer.pca_eigen_corrected_topic, PointCloud2, queue_size=1)
     pub_pedicel_xyz = rospy.Publisher(synthesizer.pedicel_xyz_topic, PointCloud2, queue_size=1)
+    pub_pedicel_end_minmax_xyz = rospy.Publisher(synthesizer.pedicel_end_minmax_xyz_topic, PointCloud2, queue_size=1)
     if synthesizer.publish_filtered_instseg_image:
         pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
@@ -356,6 +368,11 @@ def main():
             if synthesizer.publish_filtered_instseg_image:
                 pub_instseg_im_filtered.publish(synthesizer.instseg_im_filtered)
 
+            if synthesizer.eigen_computed:
+                pub_pca_eigen_raw.publish(synthesizer.pca_eigen_raw)
+                pub_pedicel_xyz.publish(synthesizer.pedicel_xyz)
+                pub_pedicel_end_minmax_xyz.publish(synthesizer.pedicel_end_minmax_xyz)
+
             if synthesizer.tf_computed:
     #        if synthesizer.result_msg is not None and synthesizer.flg=="1":
     #            rospy.loginfo(model.result_msg)
@@ -364,9 +381,7 @@ def main():
                 pub_polynomial_pointcloud.publish(synthesizer.polynomial_point_cloud)
                 pub_tomato_center_pointcloud.publish(synthesizer.tomato_center_point_cloud)
                 pub_pedicel_end_pointcloud.publish(synthesizer.pedicel_end_point_cloud)
-                pub_pca_eigen_raw.publish(synthesizer.pca_eigen_raw)
                 pub_pca_eigen_corrected.publish(synthesizer.pca_eigen_corrected)
-                pub_pedicel_xyz.publish(synthesizer.pedicel_xyz)
     #            r.sleep()
                 if synthesizer.calc_all_modes:
                     for i, quaternion in enumerate(synthesizer.quaternions_using_all_modes):
@@ -384,6 +399,7 @@ def main():
             synthesizer.instseg_finished = False
             synthesizer.sm_finished = False
             synthesizer.tf_computed = False
+            synthesizer.eigen_computed = False
 
 
 
