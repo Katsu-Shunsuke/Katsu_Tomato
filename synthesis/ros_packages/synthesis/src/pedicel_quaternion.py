@@ -102,7 +102,7 @@ def calc_tomato_center(xyz):
     A = np.ones((xyz.shape[0], 4))
     A[:,:3] = 2 * xyz # add column of ones 
     f = np.sum(xyz ** 2, axis=1)
-    c, residules, rank, singval = np.linalg.lstsq(A, f)
+    c, residules, rank, singval = np.linalg.lstsq(A, f, rcond=None)
     r = np.sqrt(c[0]**2 + c[1]**2 + c[2]**2 + c[3])
     return c[:3], r
 
