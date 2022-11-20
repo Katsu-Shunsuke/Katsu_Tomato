@@ -167,7 +167,8 @@ class Synthesis:
             # ==============================
             # Make changes from here on
             pedicel_xyz = self.xyz[y, x, :]
-            within_stds = remove_outliers(pedicel_xyz[:,2], max_deviations=1)
+#            within_stds = remove_outliers(pedicel_xyz[:,2], max_deviations=1)
+            within_stds = remove_outliers(np.sqrt(np.sum(pedicel_xyz ** 2, axis=1)), max_deviations=1)
             pedicel_xyz = pedicel_xyz[within_stds, :] # remove incorrect points at object boundary
             this_pedicel = this_pedicel[within_stds, :]
 
@@ -193,11 +194,11 @@ class Synthesis:
             pedicel_end_min = pedicel_xyz_transformed[i_min, :]
             pedicel_end_max_2d = this_pedicel[i_max, :]
             pedicel_end_min_2d = this_pedicel[i_min, :]
-#            plt.figure()
-#            plt.imshow(self.im_array)
-#            plt.plot(*pedicel_end_max_2d[::-1], "yo", ms=1)
-#            plt.plot(*pedicel_end_min_2d[::-1], "yo", ms=1)
-#            plt.savefig("pedicel_ends.png")
+            plt.figure()
+            plt.imshow(self.im_array)
+            plt.plot(*pedicel_end_max_2d[::-1], "yo", ms=1)
+            plt.plot(*pedicel_end_min_2d[::-1], "yo", ms=1)
+            plt.savefig("pedicel_ends.png")
 
             self.pedicel_end_minmax_xyz = generate_pc2_message(
                 np.vstack((pedicel_end_max, pedicel_end_min)) @ np.linalg.inv(M.T),
