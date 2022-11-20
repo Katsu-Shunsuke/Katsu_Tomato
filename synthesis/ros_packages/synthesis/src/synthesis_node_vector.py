@@ -164,7 +164,9 @@ class Synthesis:
             # ==============================
             # Make changes from here on
             pedicel_xyz = self.xyz[y, x, :]
-            pedicel_xyz = pedicel_xyz[remove_outliers(pedicel_xyz[:,2], max_deviations=0.7), :] # remove incorrect points at object boundary
+            within_stds = remove_outliers(pedicel_xyz[:,2], max_deviations=1)
+            pedicel_xyz = pedicel_xyz[within_stds, :] # remove incorrect points at object boundary
+            this_pedicel = this_pedicel[within_stds, :]
 
             # perform pca. M is matrix of eigen vectors, eigen are eigen vector point clouds for visualization
             M = pca(pedicel_xyz)
@@ -188,6 +190,11 @@ class Synthesis:
             pedicel_end_min = pedicel_xyz_transformed[i_min, :]
             pedicel_end_max_2d = this_pedicel[i_max, :]
             pedicel_end_min_2d = this_pedicel[i_min, :]
+#            plt.figure()
+#            plt.imshow(self.im_array)
+#            plt.plot(*pedicel_end_max_2d[::-1], "yo", ms=1)
+#            plt.plot(*pedicel_end_min_2d[::-1], "yo", ms=1)
+#            plt.savefig("pedicel_ends.png")
 
             # search if there is a sepal attached to either of the pedicel ends
             r_search = 20 # in pixels
@@ -198,8 +205,8 @@ class Synthesis:
                 sepal_circle = indices_within_circle(self.im_array.shape, sepal_center, r_search)
                 pedicel_end_max_circle = indices_within_circle(self.im_array.shape, pedicel_end_max_2d, r_search)
                 pedicel_end_min_circle = indices_within_circle(self.im_array.shape, pedicel_end_min_2d, r_search)
-                plt.imshow(pedicel_end_max_circle)
-                plt.savefig("circle.png")
+#                plt.imshow(pedicel_end_max_circle)
+#                plt.savefig("circle.png")
 
                 if np.logical_and(pedicel_end_max_circle, sepal_circle).any():
                     intersect_end_max += 1
