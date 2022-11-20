@@ -214,8 +214,9 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
         coefs_yx = np.polyfit(y, x, deg=deg)
         coefs_yz = np.polyfit(y, z, deg=deg)
         # need to think about coordinate system
-        index = int((pedicel_cut_prop) * len(y))
-        y_cut = np.partition(y, index)[index]
+#        index = int((pedicel_cut_prop) * len(y))
+#        y_cut = np.partition(y, index)[index]
+        y_cut = pedicel_cut_prop * (np.max(y) - np.min(y)) + np.min(y)
         # predict
         x_pred = np.polyval(coefs_yx, y_cut)
         z_pred = np.polyval(coefs_yz, y_cut)
