@@ -12,6 +12,7 @@ rosparams[bbox_top]="0.5" # the amount of top part of bbox used for determining 
 rosparams[ripeness_threshold]=10 # less than this value means ripe, else unripe. 
 rosparams[ripeness_percentile]="0.25" # the percentile used for removing outliers in ripeness values
 rosparams[deg]=4 # degree of polynomial curve fitting
+rosparams[max_dist]=800 # max distance from camera center to pedicel in mm (to avoid making attempts for detections too far)
 
 # instance segmentation thresholds
 rosparams[threshold_stem]="0.3"
