@@ -137,7 +137,7 @@ class Synthesis:
         ripeness_percentile = rospy.get_param("ripeness_percentile", 0.25)
         pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 4)
         which_pedicel = rospy.get_param("which_pedicel", 0)
-        max_dist = rospy.get_param("max_dist", 800)
+        max_dist = rospy.get_param("max_dist", 999)
         
         print("\nbbox_top: {}\nripeness_threshold: {}\nripeness_percentile: {}\npedicel_calc_mode: {}\nwhich_pedicel: {}\n".format(
             bbox_top, ripeness_threshold, ripeness_percentile, pedicel_calc_mode, which_pedicel))
@@ -176,7 +176,7 @@ class Synthesis:
             # perform pca. M is matrix of eigen vectors, eigen are eigen vector point clouds for visualization
             pedicel_xyz_mean = calc_mean_point(pedicel_xyz)
             pedicel_dist = np.linalg.norm(pedicel_xyz_mean)
-            print("pedicel_dist", pedicel_dist, "[mm]")
+            print("pedicel_dist:", pedicel_dist, "[mm]")
             if pedicel_dist < max_dist:
                 M = pca(pedicel_xyz)
                 eigen = visualize_eigen_vectors(pedicel_xyz_mean, M)
@@ -229,8 +229,8 @@ class Synthesis:
                     if np.logical_and(pedicel_end_min_circle, sepal_circle).any():
                         intersect_end_min += 1
                 
-                print("intersect_end_max", intersect_end_max)
-                print("intersect_end_min", intersect_end_min)
+                print("intersect_end_max:", intersect_end_max)
+                print("intersect_end_min:", intersect_end_min)
                 if intersect_end_max > 0 and intersect_end_min == 0:
                     pedicel_end_with_sepal_ij = pedicel_end_max_2d
                     if intersect_end_max > 1:
@@ -270,9 +270,9 @@ class Synthesis:
                     else: # zero
                         j_final = None
         
-                    print("overlapping_tomatoes", overlapping_tomatoes)
-                    print("j_final", j_final)
-                    print("dists", dists, "\n")
+                    print("overlapping_tomatoes:", overlapping_tomatoes)
+                    print("j_final:", j_final)
+                    print("dists:", dists, "\n")
         
                     if j_final is not None:
                         mask_indices = self.mask_tomato[j_final].astype(int)
@@ -285,7 +285,7 @@ class Synthesis:
                         lower_index = int(ripeness_percentile * len(ripeness))
                         upper_index = int((1 - ripeness_percentile) * len(ripeness))
                         ripeness = np.mean(ripeness[lower_index: upper_index])
-                        print("ripeness", ripeness, "\n")
+                        print("ripeness:", ripeness)
                         if ripeness < ripeness_threshold:
                             # send this info to the manipulator  
                             self.this_pedicel = this_pedicel
@@ -293,7 +293,7 @@ class Synthesis:
                             # calculate tomato center
                             tomato_xyz = self.xyz[mask_indices[:, 0], mask_indices[:, 1], :] # should be nx3
                             tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
-                            print("tomato_dia", tomato_r * 2 * 0.001, "[m]")
+                            print("tomato_dia:", tomato_r * 2 * 0.001, "[m]")
                             self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
         
                             # curve fitting
@@ -406,6 +406,7 @@ def main():
             synthesizer.sm_finished = False
             synthesizer.tf_computed = False
             synthesizer.eigen_computed = False
+            print("====================================================")
 
 
 
