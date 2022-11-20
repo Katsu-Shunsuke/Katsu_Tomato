@@ -168,7 +168,7 @@ class Synthesis:
             # Make changes from here on
             pedicel_xyz = self.xyz[y, x, :]
 #            within_stds = remove_outliers(pedicel_xyz[:,2], max_deviations=1)
-            within_stds = remove_outliers(np.sqrt(np.sum(pedicel_xyz ** 2, axis=1)), max_deviations=1)
+            within_stds = remove_outliers(np.sqrt(np.sum(pedicel_xyz ** 2, axis=1)), max_deviations=0.7)
             pedicel_xyz = pedicel_xyz[within_stds, :] # remove incorrect points at object boundary
             this_pedicel = this_pedicel[within_stds, :]
 
@@ -225,8 +225,8 @@ class Synthesis:
                 if np.logical_and(pedicel_end_min_circle, sepal_circle).any():
                     intersect_end_min += 1
             
-            print(intersect_end_max)
-            print(intersect_end_min)
+            print("intersect_end_max", intersect_end_max)
+            print("intersect_end_min", intersect_end_min)
             if intersect_end_max > 0 and intersect_end_min == 0:
                 pedicel_end_with_sepal_ij = pedicel_end_max_2d
                 if intersect_end_max > 1:
@@ -289,6 +289,7 @@ class Synthesis:
                         # calculate tomato center
                         tomato_xyz = self.xyz[mask_indices[:, 0], mask_indices[:, 1], :] # should be nx3
                         tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
+                        print("tomato_dia", tomato_r * 2 * 0.001, "[m]")
                         self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
     
                         # curve fitting
