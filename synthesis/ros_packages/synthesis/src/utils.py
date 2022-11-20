@@ -232,8 +232,8 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
         # pedicel_end
         pedicel_end_y =  np.max(y)
         pedicel_end_x = np.polyval(coefs_yx, pedicel_end_y)
-        #pedicel_end_z = np.polyval(coefs_yz, pedicel_end_y)
-        pedicel_end_z = tomato_center[2] - np.sqrt(tomato_r**2 - (pedicel_end_x - tomato_center[0])**2 - (pedicel_end_y - tomato_center[1])**2)
+        pedicel_end_z = np.polyval(coefs_yz, pedicel_end_y)
+#        pedicel_end_z = tomato_center[2] - np.sqrt(tomato_r**2 - (pedicel_end_x - tomato_center[0])**2 - (pedicel_end_y - tomato_center[1])**2)
         pedicel_end = np.array([pedicel_end_x, pedicel_end_y, pedicel_end_z])
 
         # fitted curve for visualization

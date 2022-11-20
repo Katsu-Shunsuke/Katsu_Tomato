@@ -293,8 +293,8 @@ class Synthesis:
     
                         # curve fitting
                         # first figure out if largest eigen value vector is pointing in which direction
-                        pedicel_end = self.xyz[y_end, x_end, :]
-                        if np.linalg.norm(pedicel_xyz_mean + M[0, :] - pedicel_end) > np.linalg.norm(pedicel_xyz_mean - pedicel_end):
+                        pedicel_end_minmax = self.xyz[y_end, x_end, :]
+                        if np.linalg.norm(pedicel_xyz_mean + M[0, :] - pedicel_end_minmax) > np.linalg.norm(pedicel_xyz_mean - pedicel_end_minmax):
                             M[0, :] *= -1
                         if (np.cross(M[0, :], M[1, :]) / M[2, :] < 0).all():
                             M[2, :] *= -1
@@ -307,8 +307,8 @@ class Synthesis:
                         )
                         x_glob, y_glob, z_glob = (pedicel_xyz @ M.T).T
                         tomato_center_transformed = tomato_center @ M.T
-                        cut_point, dir_vector, pedicel_end_dummy, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center_transformed, tomato_r=tomato_r) # pedicel_end is dummy, only used for non pca version
-                        cut_point, dir_vector, curve = [ting @ np.linalg.inv(M.T) for ting in [cut_point, dir_vector, curve]]
+                        cut_point, dir_vector, pedicel_end, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center_transformed, tomato_r=tomato_r) # pedicel_end is dummy, only used for non pca version
+                        cut_point, dir_vector, pedicel_end, curve = [ting @ np.linalg.inv(M.T) for ting in [cut_point, dir_vector, pedicel_end, curve]]
     
                         # cutpoint
                         cut_point_msg = CutPoint()
