@@ -213,34 +213,30 @@ class Synthesis:
                 self.eigen_computed = True
     
                 # search if there is a sepal attached to either of the pedicel ends
-                r_search = 20 # in pixels
-                intersect_end_max = 0
-                intersect_end_min = 0
+                d_search = 40 # in pixels
+                intersect_end_max = []
+                intersect_end_min = []
                 for i_sepal, this_sepal in enumerate(self.mask_sepal):
                     sepal_center = np.mean(this_sepal, axis=0)
-                    sepal_circle = indices_within_circle(self.im_array.shape, sepal_center, r_search)
-                    pedicel_end_max_circle = indices_within_circle(self.im_array.shape, pedicel_end_max_2d, r_search)
-                    pedicel_end_min_circle = indices_within_circle(self.im_array.shape, pedicel_end_min_2d, r_search)
-    #                plt.imshow(pedicel_end_max_circle)
-    #                plt.savefig("circle.png")
-    
-                    if np.logical_and(pedicel_end_max_circle, sepal_circle).any():
-                        intersect_end_max += 1
-                    if np.logical_and(pedicel_end_min_circle, sepal_circle).any():
-                        intersect_end_min += 1
+                    d_max_end = np.linalg.norm(sepal_center - pedicel_end_max_2d)
+                    d_min_end = np.linalg.norm(sepal_center - pedicel_end_min_2d)
+                    if d_max_end < d_search:
+                        intersect_end_max.append(pedicel_end_max_2d)
+                    if d_min_end < d_search:
+                        intersect_end_min.append(pedicel_end_min_2d)
                 
                 print("intersect_end_max:", intersect_end_max)
                 print("intersect_end_min:", intersect_end_min)
-                if intersect_end_max > 0 and intersect_end_min == 0:
-                    pedicel_end_with_sepal_ij = pedicel_end_max_2d
-                    if intersect_end_max > 1:
+                if len(intersect_end_max) > 0 and len(intersect_end_min) == 0:
+                    pedicel_end_with_sepal_ij = min(intersect_end_max)
+                    if len(intersect_end_max) > 1:
                         warnings.warn("More than 1 overlapping sepal at pedicel_end_max")
-                elif intersect_end_min > 0 and intersect_end_max == 0:
-                    pedicel_end_with_sepal_ij = pedicel_end_min_2d
-                    if intersect_end_min > 1:
+                elif len(intersect_end_min) > 0 and len(intersect_end_max) == 0:
+                    pedicel_end_with_sepal_ij = min(intersect_end_min)
+                    if len(intersect_end_min) > 1:
                         warnings.warn("More than 1 overlapping sepal at pedicel_end_min")
-                elif intersect_end_min > 0 and intersect_end_max > 0:
-                    pedicel_end_with_sepal_ij = pedicel_end_max_2d if pedicel_end_max_2d[0] - pedicel_end_min_2d[0] > 0 else pedicel_end_min_2d
+                elif len(intersect_end_min) > 0 and len(intersect_end_max) > 0:
+                    pedicel_end_with_sepal_ij = min(intersect_end_max) if min(intersect_end_max) < min(intersect_end_min) else min(intersect_end_min)
                     warnings.warn("Both pedicel ends intersect with a sepal.")
                 else: # both equal zero
                     pedicel_end_with_sepal_ij = None
