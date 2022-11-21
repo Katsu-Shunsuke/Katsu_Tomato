@@ -216,51 +216,64 @@ class Synthesis:
                 d_search = 40 # in pixels
                 intersect_end_max = []
                 intersect_end_min = []
+                intersect_end_max_sepal = []
+                intersect_end_min_sepal = []
                 for i_sepal, this_sepal in enumerate(self.mask_sepal):
                     sepal_center = np.mean(this_sepal, axis=0)
                     d_max_end = np.linalg.norm(sepal_center - pedicel_end_max_2d)
                     d_min_end = np.linalg.norm(sepal_center - pedicel_end_min_2d)
                     if d_max_end < d_search:
                         intersect_end_max.append(d_max_end)
+                        intersect_end_max_sepal.append(sepal_center)
                     if d_min_end < d_search:
                         intersect_end_min.append(d_min_end)
+                        intersect_end_min_sepal.append(sepal_center)
                 
                 print("intersect_end_max:", intersect_end_max)
                 print("intersect_end_min:", intersect_end_min)
                 if len(intersect_end_max) > 0 and len(intersect_end_min) == 0:
                     pedicel_end_with_sepal_ij = pedicel_end_max_2d
+                    sepal_center_pedicel_end = intersect_end_max_sepal[np.argmin(intersect_end_max)]
                     if len(intersect_end_max) > 1:
                         warnings.warn("More than 1 overlapping sepal at pedicel_end_max")
                 elif len(intersect_end_min) > 0 and len(intersect_end_max) == 0:
                     pedicel_end_with_sepal_ij = pedicel_end_min_2d
+                    sepal_center_pedicel_end = intersect_end_min_sepal[np.argmin(intersect_end_min)]
                     if len(intersect_end_min) > 1:
                         warnings.warn("More than 1 overlapping sepal at pedicel_end_min")
                 elif len(intersect_end_min) > 0 and len(intersect_end_max) > 0:
                     pedicel_end_with_sepal_ij = pedicel_end_max_2d if min(intersect_end_max) < min(intersect_end_min) else pedicel_end_min_2d
+                    sepal_center_pedicel_end = intersect_end_max_sepal[np.argmin(intersect_end_max)] if (
+                        min(intersect_end_max) < min(intersect_end_min)
+                    ) else intersect_end_min_sepal[np.argmin(intersect_end_min)]
                     warnings.warn("Both pedicel ends intersect with a sepal.")
                 else: # both equal zero
                     pedicel_end_with_sepal_ij = None
+
+                print("pedicel_end_with_sepal_ij:", pedicel_end_with_sepal_ij)
+                print("sepal_center_pedicel_end:", sepal_center_pedicel_end)
                     
                 if pedicel_end_with_sepal_ij is not None:
                     # find if any tomato overlaps
                     y_end, x_end = pedicel_end_with_sepal_ij.astype("int")
+                    y_sepal, x_sepal = sepal_center_pedicel_end.astype("int")
                     overlapping_tomatoes = []
                     xy_centers = []
                     for j, this_tomato in enumerate(self.bbox_tomato):
                         x_min, y_min, x_max, y_max = this_tomato[:4]
                         x_center = (x_min + x_max) / 2
                         y_center = (y_min + y_max) / 2
-                        if (x_end > x_min and x_end < x_max) and (y_end > y_min and y_end < bbox_top * (y_max - y_min) + y_min):
+                        if (x_sepal > x_min and x_sepal < x_max) and (y_sepal > y_min and y_sepal < bbox_top * (y_max - y_min) + y_min):
                             overlapping_tomatoes.append(j)
-                            xy_centers.append([x_center, y_center])
+                            xy_centers.append(np.array([y_center, x_center]))
                     
                     dists = []
                     if len(overlapping_tomatoes) > 1:
                         for xy_center in xy_centers:
-                            dist = np.sqrt((xy_center[0] - x_end)**2 + (xy_center[1] - y_end)**2)
-                            #dist = np.abs(x_center - x_end)
+                            dist = np.linalg.norm(xy_center - sepal_center_pedicel_end)
+                            #dist = np.abs(x_center - x_sepal)
                             dists.append(dist)
-                        j_final = overlapping_tomatoes[dists.index(min(dists))]
+                        j_final = overlapping_tomatoes[np.argmin(dists)]
                     elif len(overlapping_tomatoes) == 1:
                         j_final = overlapping_tomatoes[0]
                     else: # zero
