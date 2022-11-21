@@ -218,7 +218,7 @@ class Synthesis:
                 intersect_end_min = []
                 intersect_end_max_sepal = []
                 intersect_end_min_sepal = []
-                for i_sepal, this_sepal in enumerate(self.mask_sepal):
+                for this_sepal in self.mask_sepal:
                     sepal_center = np.mean(this_sepal, axis=0)
                     d_max_end = np.linalg.norm(sepal_center - pedicel_end_max_2d)
                     d_min_end = np.linalg.norm(sepal_center - pedicel_end_min_2d)
@@ -280,9 +280,9 @@ class Synthesis:
                     else: # zero
                         j_final = None
         
-                    print("overlapping_tomatoes:", overlapping_tomatoes)
+                    print("\noverlapping_tomatoes:", overlapping_tomatoes)
                     print("j_final:", j_final)
-                    print("dists:", dists, "\n")
+                    print("dists:", dists)
         
                     if j_final is not None:
                         mask_indices = self.mask_tomato[j_final].astype(int)
@@ -352,7 +352,7 @@ class Synthesis:
             
                             self.tf_computed = True
                             break
-        
+            print("\nPedicel has no tomato attached to it. Moving onto the next pedicel.\n")
     
 def main():
     rospy.init_node("synthesis", anonymous=True)
