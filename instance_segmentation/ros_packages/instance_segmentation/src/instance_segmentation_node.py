@@ -15,7 +15,7 @@ from rospy_tutorials.msg import Floats
 import mmcv
 from mmdet.apis import init_detector, inference_detector
 
-from utils import numpy_to_rosarray, visualize_output
+from utils import numpy_to_rosarray, visualize_output, remove_empty_instances
 from instance_segmentation.msg import InstSegRes # need to edit CMakeLists.txt and package.xml
 class InstanceSegmentation:
     def __init__(self):
@@ -25,7 +25,7 @@ class InstanceSegmentation:
         self.result_arr_topic = "instance_segmentation_array_output"
         self.result_im_topic = "instance_segmentation_image_output"
         self.config_file = '../cascade_mask_rcnn_r50_fpn_1x_tomato.py'
-        self.checkpoint_file = '../epoch_9900.pth'
+        self.checkpoint_file = '../epoch_13000.pth'
         self.publish_filtered_result_image = True
         # output of callback methods
         self.im = None
@@ -46,7 +46,7 @@ class InstanceSegmentation:
         if self.maskrcnn is None:
             self.maskrcnn = init_detector(self.config_file, self.checkpoint_file, device='cuda:0') # change device acordingly
         print("running maskrcnn")
-        self.result = inference_detector(self.maskrcnn, self.im_array) # list of list of array
+        self.result = remove_empty_instances(inference_detector(self.maskrcnn, self.im_array)) # list of list of array
         self.result_arr_msg = self.to_InstSegRes(self.result)
 
 #            result_im = visualize_output(self.im_array, self.result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=False)

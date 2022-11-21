@@ -1,6 +1,7 @@
 import rospy
 from std_msgs.msg import Float32MultiArray, UInt8MultiArray, MultiArrayDimension
 
+import copy
 import io
 import cv2
 import numpy as np
@@ -105,3 +106,15 @@ def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], sh
 
     return img
 
+def remove_empty_instances(result):
+    result_copy = copy.deepcopy(result)
+
+    for i, bbox_per_class in enumerate(result[0]):
+        j_to_delete = []
+        for j, bbox in enumerate(bbox_per_class):
+            if np.sum(result[1][i][j]) == 0: #n_pixels=0
+                j_to_delete.append(j)
+        result_copy[0][i] = np.delete(result_copy[0][i], j_to_delete, 0)
+        result_copy[1][i] = list(np.delete(np.array(result_copy[1][i]), j_to_delete, 0))
+
+    return result_copy
