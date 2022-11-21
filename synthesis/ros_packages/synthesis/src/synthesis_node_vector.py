@@ -249,11 +249,12 @@ class Synthesis:
                     warnings.warn("Both pedicel ends intersect with a sepal.")
                 else: # both equal zero
                     pedicel_end_with_sepal_ij = None
+                    sepal_center_pedicel_end = None
 
                 print("pedicel_end_with_sepal_ij:", pedicel_end_with_sepal_ij)
                 print("sepal_center_pedicel_end:", sepal_center_pedicel_end)
                     
-                if pedicel_end_with_sepal_ij is not None:
+                if pedicel_end_with_sepal_ij is not None and sepal_center_pedicel_end is not None:
                     # find if any tomato overlaps
                     y_end, x_end = pedicel_end_with_sepal_ij.astype("int")
                     y_sepal, x_sepal = sepal_center_pedicel_end.astype("int")
