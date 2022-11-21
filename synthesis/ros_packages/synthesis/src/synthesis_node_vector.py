@@ -221,22 +221,22 @@ class Synthesis:
                     d_max_end = np.linalg.norm(sepal_center - pedicel_end_max_2d)
                     d_min_end = np.linalg.norm(sepal_center - pedicel_end_min_2d)
                     if d_max_end < d_search:
-                        intersect_end_max.append(pedicel_end_max_2d)
+                        intersect_end_max.append(d_max_end)
                     if d_min_end < d_search:
-                        intersect_end_min.append(pedicel_end_min_2d)
+                        intersect_end_min.append(d_min_end)
                 
                 print("intersect_end_max:", intersect_end_max)
                 print("intersect_end_min:", intersect_end_min)
                 if len(intersect_end_max) > 0 and len(intersect_end_min) == 0:
-                    pedicel_end_with_sepal_ij = min(intersect_end_max)
+                    pedicel_end_with_sepal_ij = pedicel_end_max_2d
                     if len(intersect_end_max) > 1:
                         warnings.warn("More than 1 overlapping sepal at pedicel_end_max")
                 elif len(intersect_end_min) > 0 and len(intersect_end_max) == 0:
-                    pedicel_end_with_sepal_ij = min(intersect_end_min)
+                    pedicel_end_with_sepal_ij = pedicel_end_min_2d
                     if len(intersect_end_min) > 1:
                         warnings.warn("More than 1 overlapping sepal at pedicel_end_min")
                 elif len(intersect_end_min) > 0 and len(intersect_end_max) > 0:
-                    pedicel_end_with_sepal_ij = min(intersect_end_max) if min(intersect_end_max) < min(intersect_end_min) else min(intersect_end_min)
+                    pedicel_end_with_sepal_ij = pedicel_end_max_2d if min(intersect_end_max) < min(intersect_end_min) else pedicel_end_min_2d
                     warnings.warn("Both pedicel ends intersect with a sepal.")
                 else: # both equal zero
                     pedicel_end_with_sepal_ij = None
