@@ -23,8 +23,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
 from utils import (rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output,
-curve_fitting, pca, calc_mean_point, visualize_eigen_vectors, indices_within_circle)
-from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions, remove_outliers
+curve_fitting, pca, calc_mean_point, visualize_eigen_vectors)
+from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions, remove_outliers, select_mode_and_cutpoint
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
@@ -198,11 +198,11 @@ class Synthesis:
                 pedicel_end_min = pedicel_xyz_transformed[i_min, :]
                 pedicel_end_max_2d = this_pedicel[i_max, :]
                 pedicel_end_min_2d = this_pedicel[i_min, :]
-                plt.figure()
-                plt.imshow(self.im_array)
-                plt.plot(*pedicel_end_max_2d[::-1], "yo", ms=1)
-                plt.plot(*pedicel_end_min_2d[::-1], "yo", ms=1)
-                plt.savefig("pedicel_ends.png")
+#                plt.figure()
+#                plt.imshow(self.im_array)
+#                plt.plot(*pedicel_end_max_2d[::-1], "yo", ms=1)
+#                plt.plot(*pedicel_end_min_2d[::-1], "yo", ms=1)
+#                plt.savefig("pedicel_ends.png")
     
                 self.pedicel_end_minmax_xyz = generate_pc2_message(
                     np.vstack((pedicel_end_max, pedicel_end_min)) @ np.linalg.inv(M.T),
@@ -321,10 +321,21 @@ class Synthesis:
                                 sampling_prop=1
                             )
                             x_glob, y_glob, z_glob = (pedicel_xyz @ M.T).T
-                            tomato_center_transformed = tomato_center @ M.T
-                            cut_point, dir_vector, pedicel_end, curve = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial", tomato_center=tomato_center_transformed, tomato_r=tomato_r) # pedicel_end is dummy, only used for non pca version
-                            cut_point, dir_vector, pedicel_end, curve = [ting @ np.linalg.inv(M.T) for ting in [cut_point, dir_vector, pedicel_end, curve]]
-        
+                            cut_points, dir_vectors, pedicel_end, pedicel_start, curve, curve_length = curve_fitting(x_glob, y_glob, z_glob, mode="polynomial")
+                            cut_points, dir_vectors, pedicel_end, pedicel_start, curve = [ting @ np.linalg.inv(M.T) for ting in [cut_points, dir_vectors, pedicel_end, pedicel_start, curve]]
+
+                            mode_preference, cut_prop_i = select_mode_and_cutpoint(
+                                cutpoints=cut_points,
+                                tomato_center=tomato_center,
+                                tomato_r=tomato_r,
+                                pedicel_start=pedicel_start,
+                                curve_length=curve_length
+                            )
+                            print("mode_preference:", mode_preference)
+                            print("cut_prop_i:", cut_prop_i)
+                            cut_point = cut_points[cut_prop_i, :]
+                            dir_vector = dir_vectors[cut_prop_i, :]
+
                             # cutpoint
                             cut_point_msg = CutPoint()
                             point = Point32()
@@ -341,14 +352,25 @@ class Synthesis:
                             vec2 = dir_vector # scissor coordinates
                             self.pedicel_end_point_cloud = generate_pc2_message(pedicel_end, np.array([255, 0, 255]), sampling_prop=1)
                             if self.calc_all_modes:
-                               self.quaternions_using_all_modes = calc_all_pedicel_quaternions(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end) 
+                                self.quaternions_using_all_modes = calc_all_pedicel_quaternions(
+                                    vec1, vec2,
+                                    cutpoint=cut_point,
+                                    tomato_center=tomato_center,
+                                    pedicel_end=pedicel_end
+                                ) 
                             else:
-                                self.quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cut_point, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=pedicel_calc_mode)
+                                self.quaternion = calc_pedicel_quaternion(
+                                    vec1, vec2,
+                                    cutpoint=cut_point,
+                                    tomato_center=tomato_center,
+                                    pedicel_end=pedicel_end,
+                                    mode=pedicel_calc_mode
+                                )
                             self.translation = tuple(cut_point * 10**(-3)) # mm to m
             
                             # visualize curve-fitted polynomial
                             rgb = np.tile(np.array([255,0,0]), (len(curve), 1))
-                            self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
+                            self.polynomial_point_cloud = generate_pc2_message(curve, rgb, sampling_prop=1)
             
                             self.tf_computed = True
                             break

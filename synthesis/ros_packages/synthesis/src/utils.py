@@ -191,7 +191,7 @@ def get_img_from_fig(fig, dpi=80):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return img
 
-def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None):
+def curve_fitting(x, y, z, mode="polynomial"):
     """
     INPUTS
     x: (n_points,)
@@ -204,54 +204,61 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
     pedicel_end:
     fitted_curve:
     """
-    pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 1)
+    pedicel_cut_prop = [0.25, 0.50, 0.75] # make this a rosparam
     
     if mode == "polynomial":
-        if tomato_center is None or tomato_r is None:
-            raise Exception("Must provide tomato_center and/or tomato_r")
         deg = rospy.get_param("deg", 2)
         # polynomial regeression
         coefs_yx = np.polyfit(y, x, deg=deg)
         coefs_yz = np.polyfit(y, z, deg=deg)
+        deriv_coefs_yx = polynomial_derivative(coefs_yx)
+        deriv_coefs_yz = polynomial_derivative(coefs_yz)
 
-        # calculate cumulative length of polynomial and y_cut
-        y_grid = np.linspace(np.min(y), np.max(y), 100)
+        # calculate cumulative length of polynomial
+        n_points = 100
+        y_grid = np.linspace(np.min(y), np.max(y), n_points)
         x_grid = np.polyval(coefs_yx, y_grid)
         z_grid = np.polyval(coefs_yz, y_grid)
         curve_y_sorted = np.vstack((x_grid, y_grid, z_grid)).T
         dists = np.linalg.norm(curve_y_sorted[1:, :] - curve_y_sorted[:-1, :], axis=1)
         cumlen = np.cumsum(dists)
-        y_cut = y_grid[np.argmin(np.abs(pedicel_cut_prop * cumlen[-1] - cumlen))] # len(y_grid) and len(cumlen) differ by 1 but doesnt matter
 
-        # need to think about coordinate system
-#        index = int((pedicel_cut_prop) * len(y))
-#        y_cut = np.partition(y, index)[index]
-#        y_cut = pedicel_cut_prop * (np.max(y) - np.min(y)) + np.min(y)
-
-        # predict
-        x_pred = np.polyval(coefs_yx, y_cut)
-        z_pred = np.polyval(coefs_yz, y_cut)
-        # pedicel xyz position
-        cut_point = np.array([x_pred, y_cut, z_pred])
-        # tangent vector (3D)
-        deriv_coefs_yx = polynomial_derivative(coefs_yx)
-        deriv_coefs_yz = polynomial_derivative(coefs_yz)
-        deriv_yx = np.polyval(deriv_coefs_yx, y_cut)
-        deriv_yz = np.polyval(deriv_coefs_yz, y_cut)
-        dir_vector = np.array([deriv_yx, 1, deriv_yz])
-        dir_vector /= np.linalg.norm(dir_vector) # unit vector
+        # calculate cutpoint & dir_vector for each pedicel_cut_prop
+        cut_points = []
+        dir_vectors = []
+        for this_cut_prop in pedicel_cut_prop:
+            y_cut = y_grid[np.argmin(np.abs(this_cut_prop * cumlen[-1] - cumlen))] # len(y_grid) and len(cumlen) differ by 1 but doesnt matter
+ #           y_cut = pedicel_cut_prop * (np.max(y) - np.min(y)) + np.min(y)
+            # predict
+            x_pred = np.polyval(coefs_yx, y_cut)
+            z_pred = np.polyval(coefs_yz, y_cut)
+            # pedicel xyz position
+            cut_point = np.array([x_pred, y_cut, z_pred])
+            cut_points.append(cut_point)
+            # tangent vector (3D)
+            deriv_yx = np.polyval(deriv_coefs_yx, y_cut)
+            deriv_yz = np.polyval(deriv_coefs_yz, y_cut)
+            dir_vector = np.array([deriv_yx, 1, deriv_yz])
+            dir_vector /= np.linalg.norm(dir_vector) # unit vector
+            dir_vectors.append(dir_vector)
     
         # pedicel_end
         pedicel_end_y =  np.max(y)
         pedicel_end_x = np.polyval(coefs_yx, pedicel_end_y)
         pedicel_end_z = np.polyval(coefs_yz, pedicel_end_y)
-#        pedicel_end_z = tomato_center[2] - np.sqrt(tomato_r**2 - (pedicel_end_x - tomato_center[0])**2 - (pedicel_end_y - tomato_center[1])**2)
         pedicel_end = np.array([pedicel_end_x, pedicel_end_y, pedicel_end_z])
 
+        # pedicel_start
+        pedicel_start_y =  np.min(y)
+        pedicel_start_x = np.polyval(coefs_yx, pedicel_start_y)
+        pedicel_start_z = np.polyval(coefs_yz, pedicel_start_y)
+        pedicel_start = np.array([pedicel_start_x, pedicel_start_y, pedicel_start_z])
+
         # fitted curve for visualization
-        x_curve = np.polyval(coefs_yx, y)
-        z_curve = np.polyval(coefs_yz, y)
-        curve = np.vstack((x_curve, y, z_curve)).T
+#        x_curve = np.polyval(coefs_yx, y)
+#        z_curve = np.polyval(coefs_yz, y)
+#        curve = np.vstack((x_curve, y, z_curve)).T
+        curve = curve_y_sorted
     elif mode == "spline":
         # WIP
         raise Exception("Don't use this mode, still a work in progress.")
@@ -267,7 +274,7 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
     else:
         raise Exception("Unrecognized mode.")
 
-    return cut_point, dir_vector, pedicel_end, curve 
+    return np.array(cut_points), np.array(dir_vectors), pedicel_end, pedicel_start, curve, cumlen[-1]
 
 def pca(xyz):
     pca = PCA(n_components=3)
@@ -293,11 +300,6 @@ def visualize_eigen_vectors(p, M):
     eigen_pc = np.vstack((p, p1, p2, p3))
     return eigen_pc
 
-def indices_within_circle(im_shape, c, r_max):
-    j, i = np.meshgrid(np.arange(im_shape[1]), np.arange(im_shape[0]))
-    r = np.sqrt((i - c[0])**2 + (j - c[1])**2)
-    within_circle = r < r_max # boolean mask
-    return within_circle
 
 
 

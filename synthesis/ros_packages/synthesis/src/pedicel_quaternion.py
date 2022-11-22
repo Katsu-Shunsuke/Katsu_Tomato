@@ -42,14 +42,14 @@ def calc_pedicel_quaternion(vec1, vec2, cutpoint=None, tomato_center=None, pedic
     elif mode == 1:
         euler = tf.transformations.euler_from_matrix(rot_eye)
         quaternion = tf.transformations.quaternion_from_euler(0, 0, euler[2]) # no need to convert for quaternion because its just direction
-    elif mode == 2 or mode == 3 or mode == 4:
+    elif mode in (2, 3, 4):
         if cutpoint is None or tomato_center is None:
             raise Exception("Must provide cutpoint and/or tomato_center")
-        if mode == 2 or mode == 3:
+        if mode in (2, 3):
             theta_deg = calc_theta(vec2, tomato_center, cutpoint, rot)
             rot_about_pedicel_y = calc_rotation_matrix_about_arbitrary_axis(vec2, theta_deg)
             rot = rot_about_pedicel_y @ rot
-        if mode == 3 or mode == 4:
+        if mode in (3, 4):
             if pedicel_end is None:
                 raise Exception("Must provide pedicel_end")
             pedicel_x = rot @ np.array([1, 0, 0])
@@ -120,4 +120,43 @@ def calc_all_pedicel_quaternions(vec1, vec2, cutpoint=None, tomato_center=None, 
         quaternion = calc_pedicel_quaternion(vec1, vec2, cutpoint=cutpoint, tomato_center=tomato_center, pedicel_end=pedicel_end, mode=mode)
         quaternions.append(quaternion)
     return quaternions
+
+def select_mode_and_cutpoint(cutpoints=None, tomato_center=None, tomato_r=None, pedicel_start=None, curve_length=None):
+    """
+    analyze positional and posal relationship between pedicel and tomato to determine which mode(s) are suitable.
+    curve_length_min [mm]
+    gap_min [mm]
+    Potential arguments: pedicel_end, curve
+    RETURNS
+    -------
+    mode_preference: list of int
+    updated_pedicel_cut_prop_index: int (0, 1, or 2)
+    """
+    assert len(cutpoints) == 3
+#    assert pedicel_cut_prop[0] < pedicel_cut_prop[1]
+#    assert pedicel_cut_prop[1] < pedicel_cut_prop[2]
+
+    curve_length_min = rospy.get_param("curve_length_min", 20)
+    gap_min = rospy.get_param("gap_min", 5)
+    print("\ncurve length:", curve_length)
+
+    if curve_length < curve_length_min:
+        return [], 1 # pedicel too short
+
+    gap_start = np.linalg.norm(pedicel_start - tomato_center) - tomato_r
+    gap_mid = np.linalg.norm(cutpoints[1] - tomato_center) - tomato_r
+    print("gap_start:", gap_start)
+    print("gap_mid:", gap_mid)
+
+    # pedicel is long enough
+    if gap_mid < gap_min:
+        if gap_start < gap_min:
+            return [2], 1 # pedicel has no gap in middle and start
+        return [4, 0, 1], 0 # pedicel has no gap in mid but has gap in start
+
+    return [0, 1], 0 # pedicel is long enough and has good gap in both mid and start
+
+
+
+
 
