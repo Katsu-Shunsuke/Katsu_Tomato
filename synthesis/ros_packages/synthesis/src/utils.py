@@ -213,10 +213,21 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
         # polynomial regeression
         coefs_yx = np.polyfit(y, x, deg=deg)
         coefs_yz = np.polyfit(y, z, deg=deg)
+
+        # calculate cumulative length of polynomial and y_cut
+        y_grid = np.linspace(np.min(y), np.max(y), 100)
+        x_grid = np.polyval(coefs_yx, y_grid)
+        z_grid = np.polyval(coefs_yz, y_grid)
+        curve_y_sorted = np.vstack((x_grid, y_grid, z_grid)).T
+        dists = np.linalg.norm(curve_y_sorted[1:, :] - curve_y_sorted[:-1, :], axis=1)
+        cumlen = np.cumsum(dists)
+        y_cut = y_grid[np.argmin(np.abs(pedicel_cut_prop * cumlen[-1] - cumlen))] # len(y_grid) and len(cumlen) differ by 1 but doesnt matter
+
         # need to think about coordinate system
 #        index = int((pedicel_cut_prop) * len(y))
 #        y_cut = np.partition(y, index)[index]
-        y_cut = pedicel_cut_prop * (np.max(y) - np.min(y)) + np.min(y)
+#        y_cut = pedicel_cut_prop * (np.max(y) - np.min(y)) + np.min(y)
+
         # predict
         x_pred = np.polyval(coefs_yx, y_cut)
         z_pred = np.polyval(coefs_yz, y_cut)
