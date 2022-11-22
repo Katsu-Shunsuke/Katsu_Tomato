@@ -204,12 +204,12 @@ def curve_fitting(x, y, z, mode="polynomial", tomato_center=None, tomato_r=None)
     pedicel_end:
     fitted_curve:
     """
-    pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 0.5)
+    pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", 1)
     
     if mode == "polynomial":
         if tomato_center is None or tomato_r is None:
             raise Exception("Must provide tomato_center and/or tomato_r")
-        deg = rospy.get_param("deg", 4)
+        deg = rospy.get_param("deg", 2)
         # polynomial regeression
         coefs_yx = np.polyfit(y, x, deg=deg)
         coefs_yz = np.polyfit(y, z, deg=deg)
