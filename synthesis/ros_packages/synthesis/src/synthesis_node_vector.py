@@ -23,7 +23,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
 from utils import (rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output,
-curve_fitting, pca, calc_mean_point, visualize_eigen_vectors)
+curve_fitting, pca, calc_mean_point, visualize_eigen_vectors, generate_marker_message)
 from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions, remove_outliers, select_mode_and_cutpoint
 from synthesis.msg import InstSegRes, CutPoint, ExitCode, ModePreference # need to edit CMakeLists.txt and package.xml
 
@@ -45,6 +45,7 @@ class Synthesis:
         self.pedicel_xyz_topic = "pedicel_xyz"
         self.pedicel_end_minmax_xyz_topic = "pedicel_end_minmax_xyz"
         self.mode_preference_topic = "mode_preference"
+        self.fitted_sphere_topic = "fitted_sphere"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         self.publish_filtered_instseg_image = False
         self.calc_all_modes = True
@@ -80,6 +81,7 @@ class Synthesis:
         self.pedicel_xyz = None
         self.pedicel_end_minmax_xyz = None
         self.mode_preference = None
+        self.fitted_sphere = None
 
     def im_callback(self, msg):
         print("received image")
@@ -308,6 +310,7 @@ class Synthesis:
                             tomato_center, tomato_r = calc_tomato_center(tomato_xyz)
                             print("tomato_dia:", tomato_r * 2 * 0.001, "[m]")
                             self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([0, 255, 255]), sampling_prop=1)
+                            self.fitted_sphere = generate_marker_message(tomato_center, tomato_r * 2)
         
                             # curve fitting
                             # first figure out if largest eigen value vector is pointing in which direction
@@ -407,6 +410,7 @@ def main():
     pub_pedicel_xyz = rospy.Publisher(synthesizer.pedicel_xyz_topic, PointCloud2, queue_size=1)
     pub_pedicel_end_minmax_xyz = rospy.Publisher(synthesizer.pedicel_end_minmax_xyz_topic, PointCloud2, queue_size=1)
     pub_mode_preference = rospy.Publisher(synthesizer.mode_preference_topic, ModePreference, queue_size=1)
+    pub_fitted_sphere = rospy.Publisher(synthesizer.fitted_sphere_topic, Marker, queue_size=1)
     if synthesizer.publish_filtered_instseg_image:
         pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
@@ -437,6 +441,7 @@ def main():
                 pub_pedicel_end_pointcloud.publish(synthesizer.pedicel_end_point_cloud)
                 pub_pca_eigen_corrected.publish(synthesizer.pca_eigen_corrected)
                 pub_mode_preference.publish(synthesizer.mode_preference)
+                pub_fitted_sphere.publish(synthesizer.fitted_sphere)
     #            r.sleep()
                 if synthesizer.calc_all_modes:
                     for i, quaternion in enumerate(synthesizer.quaternions_using_all_modes):

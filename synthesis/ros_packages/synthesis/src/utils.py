@@ -300,8 +300,40 @@ def visualize_eigen_vectors(p, M):
     eigen_pc = np.vstack((p, p1, p2, p3))
     return eigen_pc
 
+def generate_marker_message(xyz, dia):
+    xyz *= 10**(-3) # mm to m
+    dia *= 10**(-3)
+    marker_data = Marker()
+    marker_data.header.frame_id = "zedm_left_camera_optical_frame"
+    marker_data.header.stamp = rospy.Time.now()
 
+    marker_data.ns = "basic_shapes"
+    marker_data.id = 0
 
+    marker_data.action = Marker.ADD
+
+    marker_data.pose.position.x = xyz[0]
+    marker_data.pose.position.y = xyz[1]
+    marker_data.pose.position.z = xyz[2]
+
+    marker_data.pose.orientation.x = 0.0
+    marker_data.pose.orientation.y = 0.0
+    marker_data.pose.orientation.z = 0.0
+    marker_data.pose.orientation.w = 1.0
+
+    marker_data.color.r = 0.0
+    marker_data.color.g = 0.5
+    marker_data.color.b = 0.5
+    marker_data.color.a = 0.4
+
+    marker_data.scale.x = dia
+    marker_data.scale.y = dia
+    marker_data.scale.z = dia
+
+    marker_data.lifetime = rospy.Duration()
+
+    marker_data.type = Marker.SPHERE 
+    return marker_data
 
 
 
