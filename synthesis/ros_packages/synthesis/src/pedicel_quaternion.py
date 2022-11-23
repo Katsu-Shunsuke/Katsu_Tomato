@@ -141,7 +141,9 @@ def select_mode_and_cutpoint(cutpoints=None, tomato_center=None, tomato_r=None, 
     print("\ncurve length:", curve_length)
 
     if curve_length < curve_length_min:
+        print("Pedicel too short.")
         return [], 1 # pedicel too short
+    print("Pedicel is long enough.")
 
     gap_start = np.linalg.norm(pedicel_start - tomato_center) - tomato_r
     gap_mid = np.linalg.norm(cutpoints[1] - tomato_center) - tomato_r
@@ -151,9 +153,12 @@ def select_mode_and_cutpoint(cutpoints=None, tomato_center=None, tomato_r=None, 
     # pedicel is long enough
     if gap_mid < gap_min:
         if gap_start < gap_min:
+            print("Pedicel has no gap anywhere along it.")
             return [2], 1 # pedicel has no gap in middle and start
+        print("Pedicel has enough gap near the stem.")
         return [4, 0, 1], 0 # pedicel has no gap in mid but has gap in start
 
+    print("Pedicel has good gap.")
     return [0, 1], 0 # pedicel is long enough and has good gap in both mid and start
 
 
