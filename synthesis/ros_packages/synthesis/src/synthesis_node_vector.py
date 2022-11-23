@@ -135,11 +135,11 @@ class Synthesis:
     def main_callback(self):
         print("running main callback")
         bbox_top = rospy.get_param("bbox_top", 1)
-        ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
+        ripeness_threshold = rospy.get_param("ripeness_threshold", 0.1)
         ripeness_percentile = rospy.get_param("ripeness_percentile", 0.25)
         pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 4)
         which_pedicel = rospy.get_param("which_pedicel", 0)
-        max_dist = rospy.get_param("max_dist", 999)
+        max_dist = rospy.get_param("max_dist", 800)
         
         print("\nbbox_top: {}\nripeness_threshold: {}\nripeness_percentile: {}\npedicel_calc_mode: {}\nwhich_pedicel: {}\n".format(
             bbox_top, ripeness_threshold, ripeness_percentile, pedicel_calc_mode, which_pedicel))
@@ -298,7 +298,7 @@ class Synthesis:
                         upper_index = int((1 - ripeness_percentile) * len(ripeness))
                         ripeness = np.mean(ripeness[lower_index: upper_index])
                         print("ripeness:", ripeness)
-                        if ripeness < ripeness_threshold:
+                        if ripeness > ripeness_threshold:
                             # send this info to the manipulator  
                             self.this_pedicel = this_pedicel
         

@@ -204,7 +204,7 @@ def curve_fitting(x, y, z, mode="polynomial"):
     pedicel_end:
     fitted_curve:
     """
-    pedicel_cut_prop = [0.25, 0.50, 0.75] # make this a rosparam
+    pedicel_cut_prop = rospy.get_param("pedicel_cut_prop", [0.25, 0.50, 0.75]) 
     
     if mode == "polynomial":
         deg = rospy.get_param("deg", 2)
