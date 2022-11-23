@@ -301,7 +301,7 @@ def visualize_eigen_vectors(p, M):
     return eigen_pc
 
 def generate_marker_message(xyz, dia):
-    xyz *= 10**(-3) # mm to m
+    point = xyz * 10**(-3) # mm to m
     dia *= 10**(-3)
     marker_data = Marker()
     marker_data.header.frame_id = "zedm_left_camera_optical_frame"
@@ -312,9 +312,9 @@ def generate_marker_message(xyz, dia):
 
     marker_data.action = Marker.ADD
 
-    marker_data.pose.position.x = xyz[0]
-    marker_data.pose.position.y = xyz[1]
-    marker_data.pose.position.z = xyz[2]
+    marker_data.pose.position.x = point[0]
+    marker_data.pose.position.y = point[1]
+    marker_data.pose.position.z = point[2]
 
     marker_data.pose.orientation.x = 0.0
     marker_data.pose.orientation.y = 0.0
