@@ -163,6 +163,7 @@ class Synthesis:
 
         # if mask_pedicel_sorted is empty then this loop is skipped. 
         for this_pedicel in mask_pedicel_sorted:
+            print("----------------------------------------------------------")
             # choose a pedicel (cannot loop for every pedicel in the image because cog can change)
             x = this_pedicel[:, 1].astype("int") # actually, better to send msg as uint32
             y = this_pedicel[:, 0].astype("int")
@@ -383,7 +384,11 @@ class Synthesis:
                         else:
                             print("\nRipeness not satisfied.")
                     else:
-                        print("\nNo tomato attached to pedicel.")
+                        print("\nNo tomato attached to sepal.")
+                else:
+                    print("\nNo sepal attached to pedicel.")
+            else:
+                print("\nPedicel too far.")
             print("Moving onto the next pedicel.\n")
     
 def main():
@@ -450,7 +455,9 @@ def main():
             synthesizer.sm_finished = False
             synthesizer.tf_computed = False
             synthesizer.eigen_computed = False
-            print("====================================================")
+            print("==========================================================")
+            print("================= MAIN CALLBACK FINISHED =================")
+            print("==========================================================")
 
 
 
