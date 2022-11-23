@@ -192,7 +192,8 @@ class Synthesis:
                 )
                 self.pedicel_xyz = generate_pc2_message(
                     pedicel_xyz,
-                    np.tile(np.array([255, 0, 255]), (len(pedicel_xyz),1))
+                    np.tile(np.array([255, 0, 255]), (len(pedicel_xyz),1)),
+                    sampling_prop=0.5
                 )
     
                 # find the two endpoints of pedicel along direction with largest eigen value
@@ -203,11 +204,6 @@ class Synthesis:
                 pedicel_end_min = pedicel_xyz_transformed[i_min, :]
                 pedicel_end_max_2d = this_pedicel[i_max, :]
                 pedicel_end_min_2d = this_pedicel[i_min, :]
-#                plt.figure()
-#                plt.imshow(self.im_array)
-#                plt.plot(*pedicel_end_max_2d[::-1], "yo", ms=1)
-#                plt.plot(*pedicel_end_min_2d[::-1], "yo", ms=1)
-#                plt.savefig("pedicel_ends.png")
     
                 self.pedicel_end_minmax_xyz = generate_pc2_message(
                     np.vstack((pedicel_end_max, pedicel_end_min)) @ np.linalg.inv(M.T),
@@ -258,26 +254,34 @@ class Synthesis:
 
                 print("pedicel_end_with_sepal_ij:", pedicel_end_with_sepal_ij)
                 print("sepal_center_pedicel_end:", sepal_center_pedicel_end)
+
+#                plt.figure()
+#                plt.imshow(self.im_array)
+#                plt.plot(*pedicel_end_with_sepal_ij[::-1], "mo", ms=1)
+#                plt.plot(*sepal_center_pedicel_end[::-1], "bo", ms=1)
+#                plt.savefig("pedicel_ends.png")
                     
                 if pedicel_end_with_sepal_ij is not None and sepal_center_pedicel_end is not None:
                     # find if any tomato overlaps
                     y_end, x_end = pedicel_end_with_sepal_ij.astype("int")
-                    y_sepal, x_sepal = sepal_center_pedicel_end.astype("int")
+#                    y_sepal, x_sepal = sepal_center_pedicel_end.astype("int")
+                    mean_point = np.mean((pedicel_end_with_sepal_ij, sepal_center_pedicel_end), axis=0).astype("int")
+                    y_mid, x_mid = mean_point
                     overlapping_tomatoes = []
                     xy_centers = []
                     for j, this_tomato in enumerate(self.bbox_tomato):
                         x_min, y_min, x_max, y_max = this_tomato[:4]
                         x_center = (x_min + x_max) / 2
                         y_center = (y_min + y_max) / 2
-                        if (x_sepal > x_min and x_sepal < x_max) and (y_sepal > y_min and y_sepal < bbox_top * (y_max - y_min) + y_min):
+                        if (x_mid > x_min and x_mid < x_max) and (y_mid > y_min and y_mid < bbox_top * (y_max - y_min) + y_min):
                             overlapping_tomatoes.append(j)
                             xy_centers.append(np.array([y_center, x_center]))
                     
                     dists = []
                     if len(overlapping_tomatoes) > 1:
                         for xy_center in xy_centers:
-                            dist = np.linalg.norm(xy_center - sepal_center_pedicel_end)
-                            #dist = np.abs(x_center - x_sepal)
+                            dist = np.linalg.norm(xy_center - mean_point)
+                            #dist = np.abs(x_center - x_mid)
                             dists.append(dist)
                         j_final = overlapping_tomatoes[np.argmin(dists)]
                     elif len(overlapping_tomatoes) == 1:
