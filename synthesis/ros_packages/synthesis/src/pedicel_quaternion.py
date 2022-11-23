@@ -98,7 +98,7 @@ def calc_tomato_center(xyz):
     we essentially find the least square solution to the equation, f=Ac
     https://jekel.me/2015/Least-Squares-Sphere-Fit/
     """
-    xyz = xyz[remove_outliers(xyz[:,2]), :]
+    xyz = xyz[remove_outliers(np.linalg.norm(xyz, axis=1)), :]
     A = np.ones((xyz.shape[0], 4))
     A[:,:3] = 2 * xyz # add column of ones 
     f = np.sum(xyz ** 2, axis=1)
