@@ -380,7 +380,11 @@ class Synthesis:
             
                             self.tf_computed = True
                             break
-            print("\nPedicel has no tomato attached to it. Moving onto the next pedicel.\n")
+                        else:
+                            print("\nRipeness not satisfied.")
+                    else:
+                        print("\nNo tomato attached to pedicel.")
+            print("Moving onto the next pedicel.\n")
     
 def main():
     rospy.init_node("synthesis", anonymous=True)
