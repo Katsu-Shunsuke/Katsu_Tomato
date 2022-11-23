@@ -54,6 +54,7 @@ add_message_files(
   InstSegRes.msg
   CutPoint.msg
   ExitCode.msg
+  ModePreference.msg
 )
 
 ## Generate services in the 'srv' folder

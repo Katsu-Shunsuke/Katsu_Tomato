@@ -25,7 +25,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from utils import (rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output,
 curve_fitting, pca, calc_mean_point, visualize_eigen_vectors)
 from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions, remove_outliers, select_mode_and_cutpoint
-from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
+from synthesis.msg import InstSegRes, CutPoint, ExitCode, ModePreference # need to edit CMakeLists.txt and package.xml
 
 class Synthesis:
     def __init__(self):
@@ -44,6 +44,7 @@ class Synthesis:
         self.pca_eigen_corrected_topic = "pca_eigen_corrected"
         self.pedicel_xyz_topic = "pedicel_xyz"
         self.pedicel_end_minmax_xyz_topic = "pedicel_end_minmax_xyz"
+        self.mode_preference_topic = "mode_preference"
         self.exit_code_pub = rospy.Publisher("large_tomato/exit_code", ExitCode, queue_size=1)
         self.publish_filtered_instseg_image = False
         self.calc_all_modes = True
@@ -78,6 +79,7 @@ class Synthesis:
         self.pca_eigen_corrected = None
         self.pedicel_xyz = None
         self.pedicel_end_minmax_xyz = None
+        self.mode_preference = None
 
     def im_callback(self, msg):
         print("received image")
@@ -346,6 +348,10 @@ class Synthesis:
                             dir_vector_msg.x, dir_vector_msg.y, dir_vector_msg.z = dir_vector
                             cut_point_msg.tangent = dir_vector_msg
                             self.result_msg = cut_point_msg
+                            # mode preference
+                            mode_preference_msg = ModePreference()
+                            mode_preference_msg.data = mode_preference
+                            self.mode_preference = mode_preference_msg
         
                             # calculate rotation matrix to align pedicel in scissor coordinate y-direction and tangent vector
                             vec1 = np.array([0.0, 1.0, 0.0]) # camera coordinates
@@ -391,6 +397,7 @@ def main():
     pub_pca_eigen_corrected = rospy.Publisher(synthesizer.pca_eigen_corrected_topic, PointCloud2, queue_size=1)
     pub_pedicel_xyz = rospy.Publisher(synthesizer.pedicel_xyz_topic, PointCloud2, queue_size=1)
     pub_pedicel_end_minmax_xyz = rospy.Publisher(synthesizer.pedicel_end_minmax_xyz_topic, PointCloud2, queue_size=1)
+    pub_mode_preference = rospy.Publisher(synthesizer.mode_preference_topic, ModePreference, queue_size=1)
     if synthesizer.publish_filtered_instseg_image:
         pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
@@ -420,6 +427,7 @@ def main():
                 pub_tomato_center_pointcloud.publish(synthesizer.tomato_center_point_cloud)
                 pub_pedicel_end_pointcloud.publish(synthesizer.pedicel_end_point_cloud)
                 pub_pca_eigen_corrected.publish(synthesizer.pca_eigen_corrected)
+                pub_mode_preference.publish(synthesizer.mode_preference)
     #            r.sleep()
                 if synthesizer.calc_all_modes:
                     for i, quaternion in enumerate(synthesizer.quaternions_using_all_modes):
