@@ -136,7 +136,7 @@ def select_mode_and_cutpoint(cutpoints=None, tomato_center=None, tomato_r=None, 
 #    assert pedicel_cut_prop[0] < pedicel_cut_prop[1]
 #    assert pedicel_cut_prop[1] < pedicel_cut_prop[2]
 
-    curve_length_min = rospy.get_param("curve_length_min", 20)
+    curve_length_min = rospy.get_param("curve_length_min", 15)
     gap_min = rospy.get_param("gap_min", 5)
     print("\ncurve length:", curve_length)
 
@@ -159,7 +159,7 @@ def select_mode_and_cutpoint(cutpoints=None, tomato_center=None, tomato_r=None, 
         return [4, 0, 1], 0 # pedicel has no gap in mid but has gap in start
 
     print("Pedicel has good gap.")
-    return [0, 1], 0 # pedicel is long enough and has good gap in both mid and start
+    return [0, 1], 1 # pedicel is long enough and has good gap in both mid and start
 
 
 

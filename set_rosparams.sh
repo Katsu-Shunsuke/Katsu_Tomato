@@ -13,7 +13,7 @@ rosparams[ripeness_threshold]="0.1" # less than this value means ripe, else unri
 rosparams[ripeness_percentile]="0.25" # the percentile used for removing outliers in ripeness values
 rosparams[deg]=2 # degree of polynomial curve fitting
 rosparams[max_dist]=800 # max distance from camera center to pedicel in mm (to avoid making attempts for detections too far)
-rosparams[curve_length_min]=20 # minimum pedicel length in mm
+rosparams[curve_length_min]=15 # minimum pedicel length in mm
 rosparams[gap_min]=5 # minimum gap required between pedicel and tomato in mm
 
 # instance segmentation thresholds
