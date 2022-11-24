@@ -174,7 +174,7 @@ class Synthesis:
             # Make changes from here on
             pedicel_xyz = self.xyz[y, x, :]
 #            within_stds = remove_outliers(pedicel_xyz[:,2], max_deviations=1)
-            within_stds = remove_outliers(np.linalg.norm(pedicel_xyz, axis=1), max_deviations=0.7)
+            within_stds = remove_outliers(np.linalg.norm(pedicel_xyz, axis=1), max_deviations=0.5)
             pedicel_xyz = pedicel_xyz[within_stds, :] # remove incorrect points at object boundary
             this_pedicel = this_pedicel[within_stds, :]
 
@@ -193,7 +193,7 @@ class Synthesis:
                 self.pedicel_xyz = generate_pc2_message(
                     pedicel_xyz,
                     np.tile(np.array([255, 0, 255]), (len(pedicel_xyz),1)),
-                    sampling_prop=0.5
+                    sampling_prop=0.3
                 )
     
                 # find the two endpoints of pedicel along direction with largest eigen value
@@ -257,8 +257,12 @@ class Synthesis:
 
 #                plt.figure()
 #                plt.imshow(self.im_array)
-#                plt.plot(*pedicel_end_with_sepal_ij[::-1], "mo", ms=1)
-#                plt.plot(*sepal_center_pedicel_end[::-1], "bo", ms=1)
+#                plt.plot(*pedicel_end_max_2d[::-1], "mo", ms=1)
+#                plt.plot(*pedicel_end_min_2d[::-1], "mo", ms=1)
+#                if pedicel_end_with_sepal_ij is not None:
+#                    plt.plot(*pedicel_end_with_sepal_ij[::-1], "mo", ms=1)
+#                if sepal_center_pedicel_end is not None:
+#                    plt.plot(*sepal_center_pedicel_end[::-1], "bo", ms=1)
 #                plt.savefig("pedicel_ends.png")
                     
                 if pedicel_end_with_sepal_ij is not None and sepal_center_pedicel_end is not None:
