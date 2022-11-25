@@ -21,7 +21,7 @@ def main():
 
     while not rospy.is_shutdown():
         pub1.publish(camera)
-        pub2.publish(flg)
+#        pub2.publish(flg)
         rate.sleep()
     rospy.spin()
 

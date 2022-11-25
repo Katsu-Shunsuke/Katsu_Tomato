@@ -143,7 +143,7 @@ def filter_instseg(bbox, mask, threshold):
         return bbox, mask_list
 
 # based on the one in instance segmentation node with very slight mods
-def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=False):
+def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], show_bbox=True, save_im=True):
     # image should be numpy array (bgr)
     # result should be the output of inference_detector
     fig = plt.figure(figsize=(25,15))
@@ -171,7 +171,7 @@ def visualize_output(image, result, threshold_per_class=[0.2, 0.8, 0.4, 0.7], sh
 
     if save_im:
         ax.savefig("test_im_" + str(datetime.datetime.now()) + ".png")
-
+        print("saveImage")
     return img
 
 def get_img_from_fig(fig, dpi=80):

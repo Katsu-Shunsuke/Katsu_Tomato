@@ -25,6 +25,7 @@ class ImageSynchronizer:
         self.right_image_msg = right_msg
 
     def update_flg(self, msg):
+        print("receiveMessage")
         if msg.data == "1" and self.left_image_msg is not None and self.right_image_msg is not None:
             self.flg = "1"
 

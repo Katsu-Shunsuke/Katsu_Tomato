@@ -1,4 +1,4 @@
-FROM stereolabs/zed:3.4-ros-devel-cuda11.1-ubuntu18.04
+FROM stereolabs/zed:3.4-ros-devel-cuda10.0-ubuntu18.04
 
 RUN apt update && apt install -y tmux; apt install -y vim
 
