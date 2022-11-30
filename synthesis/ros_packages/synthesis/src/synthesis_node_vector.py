@@ -239,7 +239,7 @@ class Synthesis:
                     self.polynomial_point_cloud = generate_pc2_message(curve, rgb)
     
                     # save result as matlab matrices
-                    savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
+#                    savemat("to_local/point_clouds/xyz.mat", {"xyz": self.xyz})
 #                    x_curve = np.polyval(coefs_yx, y_glob)
 #                    z_curve = np.polyval(coefs_yz, y_glob)
 #                    curve = np.vstack((x_curve, y_glob, z_curve)).T
@@ -249,12 +249,17 @@ class Synthesis:
  #                   t = np.array([x_pred, y_cut, z_pred])
  #                   tangent_line = np.vstack([mag * r + t for mag in np.linspace(-mag_max, mag_max, 30)])
  #                   savemat("to_local/point_clouds/tangent" + str(j) + ".mat", {"tangent": tangent_line})
-                    savemat("to_local/point_clouds/image.mat", {"image": self.im_array})
+ #                   savemat("to_local/point_clouds/image.mat", {"image": self.im_array})
     
                     # save result as numpy arrays
                     np.save("xyz.npy", self.xyz)
                     np.save("pedicel_xyz.npy",pedicel_xyz)
                     np.save("tomato_xyz.npy",tomato_xyz)
+                    np.save("mask_tomato.npy",self.mask_tomato)
+                    np.save("mask_pedicel.npy",self.mask_pedicel)
+                    np.save("mask_stem.npy",self.mask_stem)
+                    np.save("mask_sepal.npy",self.mask_sepal)
+
 #                    np.save("to_local/point_clouds/curve" + str(j) + ".npy", curve)
  #                   np.save("to_local/point_clouds/point" + str(j) + ".npy", [x_pred, y_cut, z_pred])
  #                   np.save("to_local/point_clouds/tangent" + str(j) + ".npy", tangent_line)

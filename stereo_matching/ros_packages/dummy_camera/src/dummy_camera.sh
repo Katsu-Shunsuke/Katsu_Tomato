@@ -1,11 +1,13 @@
 #!/bin/bash
 
-rosbag play -l /root/catkin_ws/src/dummy_camera/2021-05-20-09-24-08.bag &
+#rosbag play -l /root/catkin_ws/src/dummy_camera/20220930_141911_zedm.bag &
+rosbag play -l /root/catkin_ws/src/dummy_camera/20220930_141911_zedm.bag &
+#rosbag play -l /root/catkin_ws/src/dummy_camera/2021-05-20-09-24-08.bag &
 # rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-14-01-01.bag &
 # rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-14-28-08.bag &
 # rosbag play -l /root/catkin_ws/src/dummy_camera/20211105_112210_zedm.bag &
 # rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-13-58-16.bag &
-# rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-14-11-02.bag &
+#rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-14-01-01.bag &
 # rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-14-27-29.bag &
 # rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-14-21-23.bag &
 # rosbag play -l /root/catkin_ws/src/dummy_camera/2021-11-03-13-56-32.bag &
