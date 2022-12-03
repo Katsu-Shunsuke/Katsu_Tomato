@@ -5,6 +5,7 @@ declare -A rosparams
 # most-used
 rosparams[pedicel_calc_mode]=4 # mode for quaternion calculation (0-4 as of now)
 rosparams[which_pedicel]=0 # for selecting which pedicel to target. 0 means uppermost, 1 means the one below. Note that this has to be <= n_pedicels-1
+rosparams[which_tomato]=0
 
 # less-used
 rosparams[pedicel_cut_prop]="0.5" # where the cut point is along the pedicel curve, 0.5 means half way point. 0.8 means somewhere close to the tomato fruit.

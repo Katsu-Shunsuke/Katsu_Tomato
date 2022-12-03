@@ -4,6 +4,7 @@ import numpy as np
 import math
 
 from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, twist_hand, fit_plane, twist_x, twist_y,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference
+from utils import curve_fitting
 
 def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_deviations, visualize=False, ax=False):
     
@@ -15,7 +16,8 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
     pedicel_xyz = pedicel_xyz_pre[remove_outliers(pedicel_xyz_pre[:,2], 1),:] 
 
     #小花柄のトマト側-end #小花柄の茎側-start
-    end_xyz = pedicel_xyz[np.argmin(np.sum((pedicel_xyz - center)**2, axis=1))]
+    #end_xyz = pedicel_xyz[np.argmin(np.sum((pedicel_xyz - center)**2, axis=1))]
+    _,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial", tomato_center=center, tomato_r=r)
     start_xyz = pedicel_xyz[np.argmax(np.sum((pedicel_xyz - center)**2, axis=1))]
     
     #トマトの垂直ベクトルの求め方
@@ -81,11 +83,11 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
         
         if vec_z_new[0] > 0:#小花柄の向きで正負決めるべきでは？
             theta_mod_x_n = calc_modify_y(vec_y_new, vec_z_new, theta_mod_x)
-            print("modify v : " + str(theta_mod_x) + "→" + str(theta_mod_x_n))
+            print("modify v : " + str(theta_mod_x) + " →  " + str(theta_mod_x_n))
             
         else:
             theta_mod_x_n = -1 * calc_modify_y(vec_y_new, vec_z_new, - theta_mod_x)
-            print("modify v : " + str(- theta_mod_x) + "→" + str(theta_mod_x_n))
+            print("modify v : " + str(- theta_mod_x) + " →  " + str(theta_mod_x_n))
         vec_x_new, vec_y_new, vec_z_new, R_y = twist_y(vec_x_new, vec_y_new, vec_z_new, theta_mod_x_n)
         Box = twist_hand(Box, R_y, insert_point)
         
@@ -112,9 +114,11 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
     
     #ローラーの押し込み距離計算
     touch_points = back_field(P, touch_point_news)
-    dis_to_touch = np.min(np.linalg.norm(touch_points - set_point, axis=1))
-    
-    print("dis_to_touch : " + str(dis_to_touch))
+    if len(touch_points) > 0:
+        dis_to_touch = np.min(np.linalg.norm(touch_points - set_point, axis=1))
+        print("dis_to_touch : " + str(dis_to_touch))
+    else:
+        print("warning air shot")
     
     #print("tomato_xyz")
     #print(tomato_xyz.shape)
@@ -149,8 +153,8 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
     # vec_x_tw_final, vec_y_tw_final, vec_z_tw_final
     # Box, Box_tw
     
-    vec_final = np.array([vec_x_final, vec_y_final, vec_z_final])
-    vec_tw_final = np.array([vec_x_tw_final, vec_y_tw_final, vec_z_tw_final])
+    vec_final = np.array([vec_x_new, vec_y_new, vec_z_new])
+    vec_tw_final = np.array([vec_x_tw, vec_y_tw, vec_z_tw])
     eye = np.eye(4)
     eye_tw = np.eye(4)
     eye[:3,:3] = vec_final.T
