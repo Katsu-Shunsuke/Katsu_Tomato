@@ -1,4 +1,6 @@
-mport os
+#!/user/bin/env python
+
+import os
 import sys
 import rospy
 import tf
