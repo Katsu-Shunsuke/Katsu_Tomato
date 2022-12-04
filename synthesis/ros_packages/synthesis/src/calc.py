@@ -2,6 +2,7 @@
 
 import numpy as np
 import math
+import rospy
 
 from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, twist_hand, fit_plane, twist_x, twist_y,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference
 from utils import curve_fitting
@@ -13,11 +14,11 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
     pedicel_xyz_pre = index_to_xyz(pedicel_index, xyz, mask_pedicel)
     #球体フィッティング・トマトの外れ値除外　#小花柄の外れ値除外
     tomato_cut, center, r = calc_tomato_center(tomato_xyz, max_deviations) 
-    pedicel_xyz = pedicel_xyz_pre[remove_outliers(pedicel_xyz_pre[:,2], 1),:] 
+    pedicel_xyz = pedicel_xyz_pre[remove_outliers(pedicel_xyz_pre[:,2], max_deviations*2),:] 
 
     #小花柄のトマト側-end #小花柄の茎側-start
-    #end_xyz = pedicel_xyz[np.argmin(np.sum((pedicel_xyz - center)**2, axis=1))]
-    _,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial", tomato_center=center, tomato_r=r)
+    end_xyz = pedicel_xyz[np.argmin(np.sum((pedicel_xyz - center)**2, axis=1))]
+    #_,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial", tomato_center=center, tomato_r=r)
     start_xyz = pedicel_xyz[np.argmax(np.sum((pedicel_xyz - center)**2, axis=1))]
     
     #トマトの垂直ベクトルの求め方
@@ -92,17 +93,17 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
         Box = twist_hand(Box, R_y, insert_point)
         
         
-    #なるべく水平にアプローチしたいから許容範囲で修正
-    horizon_limit = 60 #deg
-    if abs ( (vec_z_new[0] ** 2 + vec_z_new[2] ** 2) ** 0.5 / np.linalg.norm(vec_z_new) ) < np.cos(60 * math.pi / 180):
-        theta_mod_h = np.arccos(vec_z_new[0] ** 2 + vec_z_new[2] ** 2) ** 0.5 / np.linalg.norm(vec_z_new) - 60
-        if vec_z_new[1] > 0:
-            vec_x_new, vec_y_new, vec_z_new, R_x = twist_x(vec_x_new, vec_y_new, vec_z_new, theta_mod_h)
-        else:
-            vec_x_new, vec_y_new, vec_z_new, R_x = twist_x(vec_x_new, vec_y_new, vec_z_new, - theta_mod_h)
-        Box = twist_hand(Box, R_x, insert_point)
-        print("modify h : " + str(theta_mod_h))
-        
+#    #なるべく水平にアプローチしたいから許容範囲で修正
+#    horizon_limit = 60 #deg
+#    if abs ( (vec_z_new[0] ** 2 + vec_z_new[2] ** 2) ** 0.5 / np.linalg.norm(vec_z_new) ) < np.cos(60 * math.pi / 180):
+#        theta_mod_h = np.arccos(vec_z_new[0] ** 2 + vec_z_new[2] ** 2) ** 0.5 / np.linalg.norm(vec_z_new) - 60
+#        if vec_z_new[1] > 0:
+#            vec_x_new, vec_y_new, vec_z_new, R_x = twist_x(vec_x_new, vec_y_new, vec_z_new, theta_mod_h)
+#        else:
+#            vec_x_new, vec_y_new, vec_z_new, R_x = twist_x(vec_x_new, vec_y_new, vec_z_new, - theta_mod_h)
+#        Box = twist_hand(Box, R_x, insert_point)
+#        print("modify h : " + str(theta_mod_h))
+#        
     insert_h_deg = np.arcsin( vec_z_new[1] / np.linalg.norm(vec_z_new)) * 180 / math.pi
     insert_v_deg = np.arcsin( vec_z_new[2] /np.linalg.norm(np.array([vec_z_new[0], vec_z_new[2]])) ) * 180 / math.pi
     print("insert_v_deg(int) : " + str(int(insert_v_deg)))
@@ -144,6 +145,8 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
         
     set_point_tw  = insert_point - vec_z_tw * interval
     
+    insert_vector_mode = rospy.get_param("insert_vector_mode", 0)
+
 ###必要な情報
 #
 #
@@ -152,13 +155,20 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
     # vec_x_final, vec_y_final, vec_z_final
     # vec_x_tw_final, vec_y_tw_final, vec_z_tw_final
     # Box, Box_tw
+
+    if insert_vector_mode == 0:
     
-    vec_final = np.array([vec_x_new, vec_y_new, vec_z_new])
-    vec_tw_final = np.array([vec_x_tw, vec_y_tw, vec_z_tw])
+        vec_final = np.array([vec_x_final, vec_y_final, vec_z_final])
+        vec_tw_final = np.array([vec_x_tw_final, vec_y_tw_final, vec_z_tw_final])
+
+    else:
+        vec_final = np.array([vec_x_new, vec_y_new, vec_z_new])
+        vec_tw_final = np.array([vec_x_tw, vec_y_tw, vec_z_tw])
+
     eye = np.eye(4)
     eye_tw = np.eye(4)
     eye[:3,:3] = vec_final.T
     eye_tw[:3,:3] = vec_tw_final.T
  
-    return insert_point, set_point, set_point_tw, eye, eye_tw, Box_new, P
+    return insert_point, set_point, set_point_tw, eye, eye_tw, Box_new, P, end_xyz
 
