@@ -3,6 +3,36 @@
 import numpy as np
 import math
 
+
+def calc_pedicel_end(pedicel, center):
+    pedicel_sf = surface_pedicel(pedicel)
+    return pedicel_sf[np.argmin(np.sum((pedicel_sf - center)**2, axis=1))]
+
+def surface_pedicel(pedicel, level = 3):
+    y_max = np.max(pedicel[:,1])
+    y_min = np.min(pedicel[:,1])
+    x_max = np.max(pedicel[:,0])
+    x_min = np.min(pedicel[:,0])
+    n = int(max(x_max - x_min, y_max - y_min)/level)
+    x_deli = (x_max - x_min)/n
+    y_deli = (y_max - y_min)/n
+
+    x=x_min
+    y=y_min
+    pedicel_surface=[]
+    for i in range(n):
+        for j in range(n):
+            x_l = x + x_deli * i
+            x_h = x + x_deli * ( i + 1 )
+            y_l = y + y_deli * j
+            y_h = y + y_deli * ( j + 1 )
+            a= np.where((pedicel[:,0]>=x_l) & (pedicel[:,0]<=x_h) & (pedicel[:,1]>=y_l) &(pedicel[:,1]<=y_h))
+            if pedicel[a].shape[0] > 0:
+                sort_pedicel_cell = pedicel[a][np.argsort(pedicel[a][:,2])]
+                pedicel_surface.append(sort_pedicel_cell[0])
+                
+    return pedicel_surface
+
 def mask_to_xyz(xyz,mask):
     return xyz[mask[:,0], mask[:,1], :] 
 

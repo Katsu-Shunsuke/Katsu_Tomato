@@ -24,7 +24,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output, curve_fitting
 from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
-from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, twist_hand, fit_plane, twist_x, twist_y,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference
+from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_pedicel_end
 from calc import calculate
 
 class Synthesis:
@@ -247,8 +247,9 @@ class Synthesis:
         for i in range(len(pedicel_all_cut)):
             if len(pedicel_tomato_list[i]) == 1:
                 index = pedicel_tomato_list[i][0]
-                _,_, end_xyz_i, _ = curve_fitting(pedicel_all[i][:,0], pedicel_all[i][:,1], pedicel_all[i][:,2], mode="polynomial",tomato_center=tomato_center_all[index] ,tomato_r=tomato_r_all[index])
-                end_xyz_all[i].append(end_xyz_i)
+                #_,_, end_xyz_i, _ = curve_fitting(pedicel_all[i][:,0], pedicel_all[i][:,1], pedicel_all[i][:,2], mode="polynomial",tomato_center=tomato_center_all[index] ,tomato_r=tomato_r_all[index])
+                end_xyz_i = calc_pedicel_end(pedicel_all[i],tomato_center_all[index])
+		end_xyz_all[i].append(end_xyz_i)
                 
 
 #            center_i_end_dis = []
