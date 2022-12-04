@@ -80,13 +80,9 @@ def back_field(P, point):
 #    #ax.plot_surface(x, y, z,rstride=1, cstride=1, cmap='hsv') #shade=False
 #    ax.plot_wireframe(x, y, z, color=color, linewidth=0.5) #linewidthは細め
     
-def hand_box(tomato_upper, end_new, start_new, z_vec_new):
+def hand_box(tomato_upper, end_new, z_vec_new):
     thick = 30
-    
-    if np.dot((start_new-end_new), z_vec_new) < 0:
-        z_vec_new = z_vec_new * -1
-        
-    z = z_vec_new / np.linalg.norm(z_vec_new)
+    z =  z_vec_new / np.linalg.norm(z_vec_new)
     x = np.array([-z[2], 0, z[0]])
     p = np.array([end_new[0], tomato_upper, end_new[2]])
     a1 = p + x * thick + z * 10 + np.array([0, -10, 0])
@@ -110,29 +106,42 @@ def hand_box(tomato_upper, end_new, start_new, z_vec_new):
 #             [Z[4],Z[7],Z[3],Z[0]]]
 #   ax.add_collection3d(Poly3DCollection(verts, facecolors=facecolor, linewidths=1, edgecolors='r', alpha=.20))
 
-def twist_y(vec_x, vec_y, vec_z, theta):
-    t = theta * math.pi /180
-    n1 = vec_y[0]
-    n2 = vec_y[1]
-    n3 = vec_y[2]
-    c = np.cos(t)
-    s = np.sin(t)
-    R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
-                 [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
-                 [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
-    return np.dot(R, vec_x.T).T, vec_y, np.dot(R, vec_z.T).T, R
+#def twist_y(vec_x, vec_y, vec_z, theta):
+#    t = theta * math.pi /180
+#    n1 = vec_y[0]
+#    n2 = vec_y[1]
+#    n3 = vec_y[2]
+#    c = np.cos(t)
+#    s = np.sin(t)
+#    R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
+#                 [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
+#                 [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
+#    return np.dot(R, vec_x.T).T, vec_y, np.dot(R, vec_z.T).T, R
+#
+#def twist_x(vec_x, vec_y, vec_z, theta):
+#    t = theta * math.pi /180
+#    n1 = vec_x[0]
+#    n2 = vec_x[1]
+#    n3 = vec_x[2]
+#    c = np.cos(t)
+#    s = np.sin(t)
+#    R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
+#                 [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
+#                 [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
+#    return vec_x, np.dot(R, vec_y.T).T, np.dot(R, vec_z.T).T, R
 
-def twist_x(vec_x, vec_y, vec_z, theta):
+def twist(vector, theta):
     t = theta * math.pi /180
-    n1 = vec_x[0]
-    n2 = vec_x[1]
-    n3 = vec_x[2]
+    n1 = vector[0]
+    n2 = vector[1]
+    n3 = vector[2]
     c = np.cos(t)
     s = np.sin(t)
     R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
                  [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
                  [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
-    return vec_x, np.dot(R, vec_y.T).T, np.dot(R, vec_z.T).T, R
+    return R
+
 
 def fit_plane(point_cloud):
     """
@@ -158,10 +167,10 @@ def fit_plane(point_cloud):
 
     return plane_v
 
-def twist_hand(Box,R, insert_point):
-    Box_o = Box - insert_point
-    Box_tw = np.dot(R, Box_o.T).T
-    return Box_tw + insert_point
+#def twist_hand(Box,R, insert_point):
+#    Box_o = Box - insert_point
+#    Box_tw = np.dot(R, Box_o.T).T
+#    return Box_tw + insert_point
 
 def calc_modify_y(vec_y, vec_z, t):
     theta = t * math.pi /180
