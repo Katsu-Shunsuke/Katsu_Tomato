@@ -159,9 +159,11 @@ class Synthesis:
         print("n_pedicels:", n_pedicels, "\n")
         print("n_tomatoes", len(self.mask_tomato), "\n")
 
+        pedicel_tomato_list = []
         tomato_pedicel_list = []
         for n in range(len(self.mask_tomato)):
             tomato_pedicel_list.append([])
+            pedicel_tomato_list.append([])
 
         # if mask_pedicel_sorted is empty then this loop is skipped. 
         for pedicel_index, this_pedicel in enumerate(mask_pedicel_sorted):
@@ -195,9 +197,13 @@ class Synthesis:
                     dists.append(dist)
                 j_final = overlapping_tomatoes[dists.index(min(dists))]#一番距離が近いものが収穫するトマト
                 tomato_pedicel_list[j_final].append(pedicel_index)
+                pedicel_tomato_list[pedicel_index].append(j_final)
+
             elif len(overlapping_tomatoes) == 1:
                 j_final = overlapping_tomatoes[0]
                 tomato_pedicel_list[j_final].append(pedicel_index)
+                pedicel_tomato_list[pedicel_index].append(j_final)
+
             else: # zero
                 j_final = None
 
@@ -205,6 +211,7 @@ class Synthesis:
             #print("j_final", j_final)
             #print("dists", dists, "\n")
         print("tomato_pedicel_list", tomato_pedicel_list)
+        print("pedicel_tomato_list", pedicel_tomato_list)
         print("\n")
 
         ##全てのデータのxyz(cut)
@@ -221,16 +228,28 @@ class Synthesis:
             max_deviations = 0.5
             pedicel_all_cut.append( pedicel_all[i][remove_outliers(pedicel_all[i][:,2], max_deviations),:] )
 
-#        center_end_dis = []
-#        for i in range(len(tomato_all_cut)):
-#            _, tomato_center, tomato_r = calc_tomato_center(tomato_all_cut[t_i_final], 0.5)
+        center_end_dis = []
+        tomato_center_all = []
+        tomato_r_all = []
+        for i in range(len(tomato_all_cut)):
+            _, tomato_center_i, tomato_r_i = calc_tomato_center(tomato_all_cut[t_i_final], 0.5)
+            tomato_center_all.append(tomato_center_i)
+            tomato_r_all.append(tomato_r_i)
+
+        end_xyz_all = []
+        for i in range(len(pedicel_all_cut)):
+            _,_, end_xyz_i, _ = curve_fitting(pedicel_all[i][:,0], pedicel_all[i][:,1], pedicel_all[i][:,2], mode="polynomial")
+            end_xyz_all.append(end_xyz_i)
+
 #            center_i_end_dis = []
 #
 #            for j in range(len(pedicel_all_cut)):
 #                dis_min = np.min(np.sum((pedicel_all_cut[j] - tomato_center)**2, axis))
 #                center_i_end_dis.append(dis_min)
 
-            
+        #################################################
+        #######    interference  ########################
+        #################################################
 
         interference_all = []
         #eye_all = []
@@ -239,11 +258,16 @@ class Synthesis:
         for t in range(len(self.mask_tomato)):
     
             tomato_index  = t
+            
             if len(tomato_pedicel_list[t])==1:
                 pedicel_index = tomato_pedicel_list[t]
             else:
-                for p in range(len(tomato_pedicel_list[t])):
-                    pedicel_index = tomato_pedicel_list[t][p]
+                end_to_center_compare = []
+                for p in tomato_pedicel_list[t]:
+                    end_xyz_compare.append(np.linalg.norm(end_xyz_all[p]-tomato_center_all[t]))
+                pedicel_index = tomato_pedicel_list[t][np.argmin(end_to_center_compare)]
+                    
+                    
             interference=[]
             
             print("tomato " + str(t))
@@ -271,8 +295,12 @@ class Synthesis:
             interference_all.append(interference)
             print("\n")
 
-        t_i_final = which_tomato
-        p_i_final = tomato_pedicel_list[which_tomato][which_pedicel]
+        ################################################
+        ######      approach     ########################
+        ################################################
+
+        p_i_final = which_tomato
+        t_i_final = pedicel_tomato_list[p_i_final]
 
         print("tomato_index : " + str(t_i_final))
         print("pedicel_index : " + str(p_i_final) + "\n")
@@ -281,7 +309,7 @@ class Synthesis:
         self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([255,0,255]), sampling_prop=1)
         pedicel_xyz = pedicel_all[p_i_final]
         #end_xyz = pedicel_xyz[np.argmin(np.sum((pedicel_xyz - tomato_center)**2, axis=1))]
-        _,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial", tomato_center=tomato_center, tomato_r=tomato_r)
+        _,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial")
         self.end_xyz_point_cloud = generate_pc2_message(end_xyz, np.array([255,0,255]), sampling_prop=1)
 
         if np.array([interference_all[t_i_final]]).any():
