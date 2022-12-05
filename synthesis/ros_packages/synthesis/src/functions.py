@@ -111,18 +111,22 @@ def back_field(P, point):
 #    ax.plot_wireframe(x, y, z, color=color, linewidth=0.5) #linewidthは細め
     
 def hand_box(tomato_upper, end_new, z_vec_new):
-    thick = 30
+    thick = 55.8
+    head = 14
+    bottom = 172.3
+    forward = 19
+    back = 175
     z =  z_vec_new / np.linalg.norm(z_vec_new)
     x = np.array([-z[2], 0, z[0]])
     p = np.array([end_new[0], tomato_upper, end_new[2]])
-    a1 = p + x * thick + z * 10 + np.array([0, -10, 0])
-    a2 = p - x * thick + z * 10 + np.array([0, -10, 0])
-    a3 = p - x * thick - z * 175 + np.array([0, -10, 0])
-    a4 = p + x * thick - z * 175 + np.array([0, -10, 0])
-    a5 = a1 + np.array([0,175,0])
-    a6 = a2 + np.array([0,175,0])
-    a7 = a3 + np.array([0,175,0])
-    a8 = a4 + np.array([0,175,0])
+    a1 = p + x * thick + z * forward + np.array([0, - head, 0])
+    a2 = p - x * thick + z * forward + np.array([0, - head, 0])
+    a3 = p - x * thick - z * back + np.array([0, - head, 0])
+    a4 = p + x * thick - z * back + np.array([0, - head, 0])
+    a5 = a1 + np.array([0,bottom,0])
+    a6 = a2 + np.array([0,bottom,0])
+    a7 = a3 + np.array([0,bottom,0])
+    a8 = a4 + np.array([0,bottom,0])
     Box = np.vstack((a1,a2,a3,a4,a5,a6,a7,a8))
     return Box
 

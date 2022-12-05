@@ -41,8 +41,8 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
     start_xyz_new = new_field(P, start_xyz)
     
     tomato_upper_new_y = t_xyz_new[np.argsort(t_xyz_new[:,1])][:int(len(t_xyz_new)*0.1)][:,1].mean()
-    tomato_delamination_new = np.array([end_xyz_new[0], tomato_upper_new_y - 5, end_xyz_new[2]])
-    touch_point_news = p_xyz_new[np.where((p_xyz_new[:,1] < tomato_upper_new_y - 4) & (p_xyz_new[:,1] > tomato_upper_new_y -5))]
+    tomato_delamination_new = np.array([end_xyz_new[0], tomato_upper_new_y - 14, end_xyz_new[2]])
+    touch_point_news = p_xyz_new[np.where((p_xyz_new[:,1] < tomato_upper_new_y - 14) & (p_xyz_new[:,1] > tomato_upper_new_y -15))]
     
     coefs_xz_new = np.polyfit(p_xyz_new[:,0], p_xyz_new[:,2], deg=1)
     insert_new = np.array([1, 0, coefs_xz_new[0]]) 

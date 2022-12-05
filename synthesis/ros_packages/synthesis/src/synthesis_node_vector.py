@@ -41,6 +41,7 @@ class Synthesis:
         self.set_point_pc2_topic = "synthesis_set_point_pc2_output"
         self.set_point_tw_pc2_topic = "synthesis_set_point_tw_pc2_output"
 
+        self.pedicel_pc2_topic = "synthesis_pedicel_pc2_output"
         self.tomato_center_pc2_topic = "synthesis_tomato_center_pc2_output"
         self.end_xyz_pc2_topic = "synthesis_end_xyz_pc2_output"
 
@@ -66,7 +67,8 @@ class Synthesis:
 
         self.tomato_center_point_cloud = None
         self.end_xyz_point_cloud = None
-        
+        self.pedicel_point_cloud = None
+
         self.image_point_cloud = None
 
         self.insert_point = None
@@ -236,7 +238,7 @@ class Synthesis:
         tomato_center_all = []
         tomato_r_all = []
         for i in range(len(tomato_all_cut)):
-            _, tomato_center_i, tomato_r_i = calc_tomato_center(tomato_all_cut[i], 0.025)
+            _, tomato_center_i, tomato_r_i = calc_tomato_center(tomato_all[i], 0.025)
             tomato_center_all.append(tomato_center_i)
             tomato_r_all.append(tomato_r_i)
 
@@ -320,7 +322,7 @@ class Synthesis:
 
             _, tomato_center, tomato_r = calc_tomato_center(tomato_all_cut[t_i_final], 0.025)
             self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([255,0,255]), sampling_prop=1)
-            pedicel_xyz = pedicel_all[p_i_final]
+            pedicel_xyz = pedicel_all_cut[p_i_final]
             #end_xyz = pedicel_xyz[np.argmin(np.sum((pedicel_xyz - tomato_center)**2, axis=1))]
             #_,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial", tomato_center = tomato_center, tomato_r = tomato_r)
             
@@ -332,6 +334,7 @@ class Synthesis:
 
             insert_point, set_point, set_point_tw, eye, eye_tw, Box_new, P_calc, end_xyz = calculate(t_i_final,p_i_final,self.xyz, self.mask_tomato, mask_pedicel_sorted, 0.025)
             self.end_xyz_point_cloud = generate_pc2_message(end_xyz, np.array([255,0,255]), sampling_prop=1)
+            self.pedicel_point_cloud = generate_pc2_message(pedicel_xyz)
 
             self.insert_point = tuple(insert_point * 10**(-3))
             print("insert_point : " + str(insert_point))
@@ -369,6 +372,8 @@ def main():
     pub_set_point_tw_pointcloud = rospy.Publisher(synthesizer.set_point_tw_pc2_topic, PointCloud2, queue_size=1)
     pub_tomato_center_pointcloud = rospy.Publisher(synthesizer.tomato_center_pc2_topic, PointCloud2, queue_size=1)
     pub_end_xyz_pointcloud = rospy.Publisher(synthesizer.end_xyz_pc2_topic, PointCloud2, queue_size=1)
+    pub_pedicel_pointcloud = rospy.Publisher(synthesizer.pedicel_pc2_topic, PointCloud2, queue_size=1)
+
     if synthesizer.publish_filtered_instseg_image:
         pub_instseg_im_filtered = rospy.Publisher(synthesizer.instseg_im_filtered_topic, Image, queue_size=1)
 #    r = rospy.Rate(10)
@@ -393,6 +398,8 @@ def main():
                 pub_set_point_tw_pointcloud.publish(synthesizer.set_point_tw_cloud)
                 pub_tomato_center_pointcloud.publish(synthesizer.tomato_center_point_cloud)
                 pub_end_xyz_pointcloud.publish(synthesizer.end_xyz_point_cloud)
+		pub_pedicel_pointcloud.publish(synthesizer.pedicel_point_cloud)
+
                 br.sendTransform(synthesizer.insert_point, synthesizer.quaternion_insert, rospy.Time.now(), "/insert_pedicel", "/zedm_left_camera_optical_frame")
                 br.sendTransform(synthesizer.set_point, synthesizer.quaternion_insert, rospy.Time.now(), "/insert", "/zedm_left_camera_optical_frame")
                 br.sendTransform(synthesizer.set_point_tw, synthesizer.quaternion_tw, rospy.Time.now(), "/twist", "/zedm_left_camera_optical_frame")
