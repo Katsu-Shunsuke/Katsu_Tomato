@@ -7,21 +7,12 @@ import rospy
 from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_pedicel_end
 from utils import curve_fitting
 
-def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_deviations, visualize=False, ax=False):
+def calculate(tomato_xyz, pedicel_xyz, xyz, end_xyz, start_xyz, max_deviations, visualize=False, ax=False):
     
-    #トマトと小花柄のxyzを取得
-    tomato_xyz = index_to_xyz(tomato_index, xyz, mask_tomato)
-    pedicel_xyz_pre = index_to_xyz(pedicel_index, xyz, mask_pedicel)
     #球体フィッティング・トマトの外れ値除外　#小花柄の外れ値除外
     tomato_cut, center, r = calc_tomato_center(tomato_xyz, max_deviations)
-    pedicel_xyz = pedicel_xyz_pre[remove_outliers(pedicel_xyz_pre[:,2], max_deviations*2),:]
     pedicel_sf = surface_pedicel(pedicel_xyz)
 
-    #小花柄のトマト側-end #小花柄の茎側-start
-    #_,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial", tomato_center=center, tomato_r=r)
-    start_xyz = pedicel_sf[np.argmax(np.sum((pedicel_sf - center)**2, axis=1))]
-    end_xyz = calc_pedicel_end(pedicel_xyz, center) #,start_xyz)
-    
     #トマトの垂直ベクトルの求め方
     #1: トマト中心と小花柄endを結んだベクトル
     #2: トマト上面（小花柄endから近いトマトの点群の平面近似-法線ベクトル
@@ -190,5 +181,5 @@ def calculate(tomato_index, pedicel_index, xyz, mask_tomato, mask_pedicel, max_d
     eye[:3,:3] = vec_final.T
     eye_tw[:3,:3] = vec_tw_final.T
  
-    return insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P, end_xyz
+    return insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P
 
