@@ -49,7 +49,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <arg name="publish_tf"            default="false" />
 
     <!-- Serial Number -->
-    <arg name="serial_number"         default="10028180" />
+    <arg name="serial_number"         default="19460423" />
 
     <!-- Frequency -->
     <arg name="pub_frame_rate"         default="15.0" />
@@ -66,9 +66,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                         cam_pos_z:=$(arg cam_pos_z)
                         cam_roll:=$(arg cam_roll)
                         cam_pitch:=$(arg cam_pitch)
-                        cam_yaw:=$(arg cam_yaw)
-                        serial_number:=$(arg serial_number)"
-        />
+			cam_yaw:=$(arg cam_yaw)
+	                serial_number:=$(arg serial_number)"
+	/>
 
         <node name="zed_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" required="true">
             <remap from="robot_description" to="zed_description" />
@@ -106,7 +106,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             <param name="exposure"                          value="$(arg exposure)" />
 
             <!-- SERIAL NUMBER -->
-            <param name="general/serial_number"             value="$(arg serial_number)" />
+	    <param name="general/serial_number"             value="$(arg serial_number)" />
 
             <!-- FREQUENCY -->
             <param name="pub_frame_rate"                    value="$(arg pub_frame_rate)" />

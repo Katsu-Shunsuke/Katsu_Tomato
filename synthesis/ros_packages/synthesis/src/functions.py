@@ -79,24 +79,60 @@ def back_field(P, point):
 #    #plot_surface(面)とplot_wireframe(グリッド線)の両方の描写を知っておくと便利。
 #    #ax.plot_surface(x, y, z,rstride=1, cstride=1, cmap='hsv') #shade=False
 #    ax.plot_wireframe(x, y, z, color=color, linewidth=0.5) #linewidthは細め
-    
-def hand_box(tomato_upper, end_new, start_new, z_vec_new):
-    thick = 30
-    
-    if np.dot((start_new-end_new), z_vec_new) < 0:
-        z_vec_new = z_vec_new * -1
-        
+
+
+def calc_pedicel_end(pedicel, center, start=None):
+    pedicel_sf = surface_pedicel(pedicel)
+    dis_from_center = np.sqrt(np.sum((pedicel_sf - center)**2, axis=1))
+    if start is not None:
+        dis_from_start = np.sqrt(((pedicel - start)[0]**2 + (pedicel - start)[2]**2))
+        score = dis_from_center - dis_from_start
+    else:
+        score = dis_from_center
+    return pedicel_sf[np.argmin(score)]
+
+def surface_pedicel(pedicel, level = 3):
+    y_max = np.max(pedicel[:,1])
+    y_min = np.min(pedicel[:,1])
+    x_max = np.max(pedicel[:,0])
+    x_min = np.min(pedicel[:,0])
+    n = int(max(x_max - x_min, y_max - y_min)/level)
+    x_deli = (x_max - x_min)/n
+    y_deli = (y_max - y_min)/n
+
+    x=x_min
+    y=y_min
+    pedicel_surface=[]
+    for i in range(n):
+        for j in range(n):
+            x_l = x + x_deli * i
+            x_h = x + x_deli * ( i + 1 )
+            y_l = y + y_deli * j
+            y_h = y + y_deli * ( j + 1 )
+            a = np.where((pedicel[:,0]>=x_l) & (pedicel[:,0]<=x_h) & (pedicel[:,1]>=y_l) & (pedicel[:,1]<=y_h))
+            if pedicel[a].shape[0] > 0:
+                sort_pedicel_cell = pedicel[a][np.argsort(pedicel[a][:,2])]
+                pedicel_surface.append(sort_pedicel_cell[0])
+
+    return pedicel_surface
+
+def hand_box(tomato_upper, end_new,  z_vec_new):
+    thick = 30.1
+    head = 14
+    bottom = 172.3
+    forward = 19
+    back = 175
     z = z_vec_new / np.linalg.norm(z_vec_new)
     x = np.array([-z[2], 0, z[0]])
     p = np.array([end_new[0], tomato_upper, end_new[2]])
-    a1 = p + x * thick + z * 10 + np.array([0, -10, 0])
-    a2 = p - x * thick + z * 10 + np.array([0, -10, 0])
-    a3 = p - x * thick - z * 175 + np.array([0, -10, 0])
-    a4 = p + x * thick - z * 175 + np.array([0, -10, 0])
-    a5 = a1 + np.array([0,175,0])
-    a6 = a2 + np.array([0,175,0])
-    a7 = a3 + np.array([0,175,0])
-    a8 = a4 + np.array([0,175,0])
+    a1 = p + x * thick + z * forward + np.array([0, -head, 0])
+    a2 = p - x * thick + z * forward + np.array([0, -head, 0])
+    a3 = p - x * thick - z * back + np.array([0, -head, 0])
+    a4 = p + x * thick - z * back + np.array([0, -head, 0])
+    a5 = a1 + np.array([0,bottom,0])
+    a6 = a2 + np.array([0,bottom,0])
+    a7 = a3 + np.array([0,bottom,0])
+    a8 = a4 + np.array([0,bottom,0])
     Box = np.vstack((a1,a2,a3,a4,a5,a6,a7,a8))
     return Box
 
@@ -110,29 +146,42 @@ def hand_box(tomato_upper, end_new, start_new, z_vec_new):
 #             [Z[4],Z[7],Z[3],Z[0]]]
 #   ax.add_collection3d(Poly3DCollection(verts, facecolors=facecolor, linewidths=1, edgecolors='r', alpha=.20))
 
-def twist_y(vec_x, vec_y, vec_z, theta):
-    t = theta * math.pi /180
-    n1 = vec_y[0]
-    n2 = vec_y[1]
-    n3 = vec_y[2]
-    c = np.cos(t)
-    s = np.sin(t)
-    R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
-                 [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
-                 [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
-    return np.dot(R, vec_x.T).T, vec_y, np.dot(R, vec_z.T).T, R
+#def twist_y(vec_x, vec_y, vec_z, theta):
+#    t = theta * math.pi /180
+#    n1 = vec_y[0]
+#    n2 = vec_y[1]
+#    n3 = vec_y[2]
+#    c = np.cos(t)
+#    s = np.sin(t)
+#    R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
+#                 [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
+#                 [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
+#    return np.dot(R, vec_x.T).T, vec_y, np.dot(R, vec_z.T).T, R
 
-def twist_x(vec_x, vec_y, vec_z, theta):
+#def twist_x(vec_x, vec_y, vec_z, theta):
+#    t = theta * math.pi /180
+#    n1 = vec_x[0]
+#    n2 = vec_x[1]
+#    n3 = vec_x[2]
+#    c = np.cos(t)
+#    s = np.sin(t)
+#    R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
+#                 [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
+#                 [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
+#    return vec_x, np.dot(R, vec_y.T).T, np.dot(R, vec_z.T).T, R
+
+def twist(vector, theta):
     t = theta * math.pi /180
-    n1 = vec_x[0]
-    n2 = vec_x[1]
-    n3 = vec_x[2]
+    n1 = vector[0]
+    n2 = vector[1]
+    n3 = vector[2]
     c = np.cos(t)
     s = np.sin(t)
     R = np.array([[c + n1**2 * (1 - c), n1 * n2 * (1 - c) - n3 * s, n1 * n3 *(1 -c) + n2 * s],
                  [n2 * n1 * (1 - c) + n3 * s, c + n2 ** 2 * (1 - c), n2 * n3 *(1 - c) - n1 * s],
                  [n3 * n1 * (1 - c) - n2 * s, n3 * n2 *(1 - c) + n1 * s, c + n3 ** 2 * (1 - c)]])
-    return vec_x, np.dot(R, vec_y.T).T, np.dot(R, vec_z.T).T, R
+    return R
+
 
 def fit_plane(point_cloud):
     """
@@ -158,10 +207,10 @@ def fit_plane(point_cloud):
 
     return plane_v
 
-def twist_hand(Box,R, insert_point):
-    Box_o = Box - insert_point
-    Box_tw = np.dot(R, Box_o.T).T
-    return Box_tw + insert_point
+#def twist_hand(Box,R, insert_point):
+#    Box_o = Box - insert_point
+#    Box_tw = np.dot(R, Box_o.T).T
+#    return Box_tw + insert_point
 
 def calc_modify_y(vec_y, vec_z, t):
     theta = t * math.pi /180
@@ -174,9 +223,9 @@ def calc_modify_y(vec_y, vec_z, t):
     return theta_mod
 
 def new_hand_arm_rotaion(vec_x, vec_y, vec_z):
-    vec_x_final = np.array([-vec_x[1], vec_x[0], vec_x[2]])
-    vec_y_final = np.array([-vec_y[1], vec_y[0], vec_y[2]])
-    vec_z_final = np.array([-vec_z[1], vec_z[0], vec_z[2]])
+    vec_x_final = np.array([vec_x[1], -vec_x[0], vec_x[2]])
+    vec_y_final = np.array([vec_y[1], -vec_y[0], vec_y[2]])
+    vec_z_final = np.array([vec_z[1], -vec_z[0], vec_z[2]])
     return vec_x_final, vec_y_final, vec_z_final
 
 def Box_new_tidy(Box_new):
@@ -205,3 +254,19 @@ def detect_interference(Box_new, xyz_new, R_box):#Box_new(8x3)xyz_new(nx3)
     center = np.array([(max_x + min_x)/2, (max_y + min_y)/2, (max_z + min_z)/2])
     xyz_tidy_1 = (xyz_tidy - center) / (np.array([max_x - min_x, max_y - min_y, max_z - min_z])/2)
     return np.count_nonzero((abs(xyz_tidy_1) < 1).all(axis=1)) #bool
+
+def detect_delimination(start, end, pedicel):
+    dis_to_start = np.sqrt(np.sum((pedicel - start)**2, axis=1))
+    dis_to_end = np.sqrt(np.sum((pedicel - end)**2, axis=1))
+    score_dif = dis_to_end - dis_to_start
+    score_sum = dis_to_end + dis_to_start
+    return delimination
+
+def calc_pedicel_start(stem, pedicel):
+    return start_xyz
+
+def calc_sepal_center(sepal):
+    center_x = np.mean(sepal[:,0])
+    center_y = np.mean(sepal[:,1])
+    center_z = np.mean(sepal[:,2])
+    return np.array([center_x, center_y, center_z])

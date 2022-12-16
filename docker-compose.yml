@@ -51,7 +51,7 @@ services:
   synthesis:
     image: synthesis_katsu:latest
     command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/synthesis/src/ && python -u synthesis_node_vector.py"
-#    command: python /root/keep_alive.py
+    #    command: python /root/keep_alive.py
     networks:
       ros:
         ipv4_address: ${SYNTHESIS_IP}
@@ -61,10 +61,10 @@ services:
 
   zed_mini:
     image: zed_mini_katsu:latest
-#    command: bash -c "source /opt/ros_ws/devel/setup.bash && cd /opt/ros_ws/ && roslaunch zed_wrapper zed_multi_cam3_serial.launch"
-#    command: bash /root/launch_camera.sh
-#    command: python /root/keep_alive.py
-    command: python -u /opt/ros_ws/src/image_synchronizer/src/image_synchronizer.py
+    command: bash -c "source /opt/ros_ws/devel/setup.bash && cd /opt/ros_ws/ && roslaunch zed_wrapper zed_camera_mod_serial.launch"
+    command: bash /root/launch_camera.sh
+    #    command: python /root/keep_alive.py
+#    command: python -u /opt/ros_ws/src/image_synchronizer/src/image_synchronizer.py
     networks:
       ros:
         ipv4_address: ${ZED_MINI_IP}
