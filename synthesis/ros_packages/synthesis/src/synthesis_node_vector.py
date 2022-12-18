@@ -1,5 +1,5 @@
 #!/user/bin/env python
-
+#test
 import os
 import sys
 import rospy
@@ -28,8 +28,8 @@ from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remo
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_sepal_center
 from calc import calculate
-from relation_list import sepal_pedicel, tomato_sepal,tomato_pedicel
-from make_model import calc_g, calc_pedicel_end, calc_delimination, generate_marker_message
+from relation_list import pedicel_sepal, sepal_tomato, pedicel_tomato, check_relation_list
+from make_model import calc_g, calc_pedicel_end, calc_pedicel_end2, calc_delimination, generate_marker_message
 
 class Synthesis:
     def __init__(self):
@@ -176,40 +176,48 @@ class Synthesis:
         # sort pedicels
         n_pedicels = int(len(self.mask_pedicel))
         size_p_mask = [len(i) for i in self.mask_pedicel]
-        mask_pedicel_sorted = [i for _, i in sorted(zip(size_p_mask, self.mask_pedicel))][::-1] # pedicels sorted from small y-values (vertically higher) first
+        mask_pedicel_sorted = [i for _, i in sorted(zip(size_p_mask, self.mask_pedicel))] # pedicels sorted from small y-values (vertically higher) first
         print("n_pedicels:", n_pedicels, "\n")
         n_sepals = int(len(self.mask_sepal))
-        size_s_mask = [len(i) for i in self.mask_sepal]
-        mask_sepal_sorted = [i for _, i in sorted(zip(size_s_mask, self.mask_sepal))][::-1]
-        bbox_sepal_sorted = [i for _, i in sorted(zip(size_s_mask, self.bbox_sepal))][::-1]
+        size_s_mask = [np.min(i[:,0]) for i in self.mask_sepal]
+        mask_sepal_sorted = [i for _, i in sorted(zip(size_s_mask, self.mask_sepal))]
+        bbox_sepal_sorted = [i for _, i in sorted(zip(size_s_mask, self.bbox_sepal))]
         print("n_sepals:", n_sepals, "\n" )
-        print("n_tomatoes:", len(self.mask_tomato), "\n")
+        n_tomatoes = int(len(self.mask_tomato))
+        size_t_mask = [np.min(i[:,0]) for i in self.mask_tomato]
+        mask_tomato_sorted = [i for _, i in sorted(zip(size_t_mask, self.mask_tomato))]
+        bbox_tomato_sorted = [i for _, i in sorted(zip(size_t_mask, self.bbox_tomato))]
+        print("n_tomatoes:", n_tomatoes, "\n")
 
 
-        sepal_pedicel_list = sepal_pedicel(mask_sepal_sorted, mask_pedicel_sorted, bbox_sepal_sorted)
-        tomato_sepal_list = tomato_sepal(self.mask_tomato, mask_sepal_sorted, self.bbox_tomato)
-        tomato_pedicel_list = tomato_pedicel(self.mask_tomato, mask_pedicel_sorted, self.bbox_tomato)
+        pedicel_sepal_list = pedicel_sepal(mask_sepal_sorted, mask_pedicel_sorted, bbox_sepal_sorted)
+        sepal_tomato_list = sepal_tomato(mask_tomato_sorted, mask_sepal_sorted, bbox_tomato_sorted)
+        pedicel_tomato_list = pedicel_tomato(mask_tomato_sorted, mask_pedicel_sorted, bbox_tomato_sorted)
         
-        pedicel_tomato_list = []
-        for i in range(n_pedicels):
-            pedicel_tomato_list.append([])
+#        pedicel_tomato_list = []
+#        for i in range(n_pedicels):
+#            pedicel_tomato_list.append([])
 
-        for i in range(len(tomato_pedicel_list)):
-            if len(tomato_pedicel_list[i]) > 0 :
-                index = tomato_pedicel_list[i][0]
-                pedicel_tomato_list[index].append(i)
+#        for i in range(len(tomato_pedicel_list)):
+#            if len(tomato_pedicel_list[i]) > 0 :
+#                index = tomato_pedicel_list[i][0]
+#                pedicel_tomato_list[index].append(i)
 
+        print("pedicel_sepal_list" + str(pedicel_sepal_list))
+        print("sepal_tomato_list" + str(sepal_tomato_list))
+        print("pedicel_tomato_list" + str(pedicel_tomato_list) + "\n")
 
-        print("sepal_pedicel_list" + str(sepal_pedicel_list))
-        print("tomato_sepal_list" + str(tomato_sepal_list))
-        print("tomato_pedicel_list" + str(tomato_pedicel_list))
+        list_sum = check_relation_list(pedicel_sepal_list, sepal_tomato_list, pedicel_tomato_list, n_tomatoes, n_sepals, n_pedicels)
+
+        print("summerize")
+        print(str(list_sum) + "\n")
 
 
         ########################################################
         #######    全てのデータのxyz(cut)  #####################
         ########################################################
 
-        tomato_all = index_to_xyz_all(self.xyz, self.mask_tomato)
+        tomato_all = index_to_xyz_all(self.xyz, mask_tomato_sorted)
         pedicel_all = index_to_xyz_all(self.xyz, mask_pedicel_sorted)
         sepal_all = index_to_xyz_all(self.xyz, mask_sepal_sorted)
         
@@ -217,7 +225,7 @@ class Synthesis:
         pedicel_all_cut = []
         sepal_all_cut = []
         for i in range(len(tomato_all)):
-            max_deviations = 0.025
+            max_deviations = 0.5
             tomato_all_cut.append( tomato_all[i][remove_outliers(tomato_all[i][:,2], max_deviations),:] )
 
         for i in range(len(pedicel_all)):
@@ -313,70 +321,71 @@ class Synthesis:
         ######      approach     ########################
         ################################################
 
-        if len(pedicel_tomato_list) != 0:
-            p_i_final = which_pedicel
-            if p_i_final > len(pedicel_tomato_list) - 1:
-                print("select pedicel is not found")
+        if len(list_sum) != 0:
+            t_i_final = which_tomato
+            if (list_sum[:,0] == t_i_final).any():
+                
+                list_approach = list_sum[np.where(list_sum[:,0]==t_i_final)][0]
+                p_i_final = list_approach[2]
+                s_i_final = list_approach[1]
 
-            else:
-                if len(pedicel_tomato_list[p_i_final]) == 1:
-                    t_i_final = pedicel_tomato_list[p_i_final][0]
-                    s_i_final = tomato_sepal_list[t_i_final][0]
+                print("tomato_index : " + str(t_i_final))
+                print("sepal_index : " + str(s_i_final))
+                print("pedicel_index : " + str(p_i_final) + "\n")
 
-                    print("tomato_index : " + str(t_i_final))
-                    print("sepal_index : " + str(s_i_final))
-                    print("pedicel_index : " + str(p_i_final) + "\n")
+                tomato_xyz = tomato_all_cut[t_i_final]
+                _, tomato_center, tomato_r = calc_tomato_center(tomato_xyz, 0.025)
+                self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([255,0,255]), sampling_prop=1)
+                self.fitted_sphere = generate_marker_message(tomato_center, tomato_r*2)
 
-                    tomato_xyz = tomato_all_cut[t_i_final]
-                    _, tomato_center, tomato_r = calc_tomato_center(tomato_xyz, 0.025)
-                    self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([255,0,255]), sampling_prop=1)
-                    self.fitted_sphere = generate_marker_message(tomato_center, tomato_r*2)
-
-                    sepal_g = calc_g(sepal_all_cut[s_i_final])
-                    pedicel_xyz = pedicel_all_cut[p_i_final]
-                    start_xyz = pedicel_xyz[np.argmax(np.sum((pedicel_xyz - sepal_g)**2, axis=1))]
-                    surface_pedicel_xyz = np.array(surface_pedicel(pedicel_xyz, level=0.5))
-                    end_xyz = sepal_g
-                    delimination = calc_delimination(pedicel_xyz, start_xyz, end_xyz, tomato_center)
-                    #end_xyz = pedicel_xyz[np.argmin(np.sum((pedicel_xyz - tomato_center)**2, axis=1))]
-                    #_,_, end_xyz, _ = curve_fitting(pedicel_xyz[:,0], pedicel_xyz[:,1], pedicel_xyz[:,2], mode="polynomial", tomato_center = tomato_center, tomato_r = tomato_r)
-            
-    
- #                   if np.array([interference_all[t_i_final]]).any():
- #                       print("warning: may get caught on other tomatoes")
- #                   else:
- #                       print("no obstale!!")
-
-                    insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate(tomato_xyz,pedicel_xyz,self.xyz,end_xyz,start_xyz,0.025)
-                    self.end_xyz_point_cloud = generate_pc2_message(end_xyz, np.array([255,0,255]), sampling_prop=1)
-
+                sepal_g = calc_g(sepal_all_cut[s_i_final])
+                pedicel_xyz = pedicel_all_cut[p_i_final]
+                start_xyz = pedicel_xyz[np.argmax(np.sum((pedicel_xyz - sepal_g)**2, axis=1))]
+                surface_pedicel_xyz = np.array(surface_pedicel(pedicel_xyz, level=0.5))
+                #end_xyz = (sepal_g - tomato_center)*tomato_r/np.linalg.norm(sepal_g - tomato_center) + tomato_center
+                end_xyz = sepal_g
+                end_xyz = calc_pedicel_end2(pedicel_xyz, end_xyz)
+                length = np.dot((sepal_g - tomato_center),(end_xyz-tomato_center))/np.linalg.norm(end_xyz-tomato_center)
+                end_xyz = (end_xyz - tomato_center)*(length)/np.linalg.norm(end_xyz - tomato_center) + tomato_center
+                delimination = calc_delimination(pedicel_xyz, start_xyz, end_xyz, tomato_center)
+                if delimination is not None:
                     self.delimination_point_cloud = generate_pc2_message(delimination,np.array([255,255,255]), sampling_prop=1) 
-                    self.start_xyz_point_cloud = generate_pc2_message(start_xyz,np.array([255,0,0]),sampling_prop=1)
+                    
+#                   if np.array([interference_all[t_i_final]]).any():
+#                       print("warning: may get caught on other tomatoes")
+#                   else:
+#                       print("no obstale!!")
 
-                    pedicel_color = np.zeros((len(surface_pedicel_xyz),3), dtype=np.int16)
-                    self.pedicel_point_cloud = generate_pc2_message(surface_pedicel_xyz, pedicel_color, sampling_prop=1)
+                insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate(tomato_xyz,pedicel_xyz,self.xyz,end_xyz,start_xyz,0.025)
+                self.end_xyz_point_cloud = generate_pc2_message(end_xyz, np.array([255,0,255]), sampling_prop=1)
 
-                    box_color = np.array([[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255]])
-                    box_color_tw = np.array([[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0]])
-                    self.box_point_cloud = generate_pc2_message(Box, box_color, sampling_prop=1)
-                    self.box_tw_point_cloud = generate_pc2_message(Box_tw, box_color_tw, sampling_prop=1)
-    
-                    self.insert_point = tuple(insert_point * 10**(-3))
-                    print("insert_point : " + str(insert_point))
-                    self.set_point = tuple(set_point * 10**(-3))
-                    self.set_point_tw = tuple(set_point_tw * 10**(-3))
-    
-                    self.insert_point_cloud = generate_pc2_message(insert_point, np.array([255, 0, 255]), sampling_prop=1)
-                    self.set_point_cloud = generate_pc2_message(set_point, np.array([255, 0, 255]), sampling_prop=1)
-                    self.set_point_tw_cloud = generate_pc2_message(set_point_tw, np.array([255, 0, 255]), sampling_prop=1)
+                self.start_xyz_point_cloud = generate_pc2_message(start_xyz,np.array([255,0,0]),sampling_prop=1)
+
+                pedicel_color = np.zeros((len(surface_pedicel_xyz),3), dtype=np.int16)
+                self.pedicel_point_cloud = generate_pc2_message(surface_pedicel_xyz, pedicel_color, sampling_prop=1)
+
+                box_color = np.array([[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255]])
+                box_color_tw = np.array([[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0]])
+                self.box_point_cloud = generate_pc2_message(Box, box_color, sampling_prop=1)
+                self.box_tw_point_cloud = generate_pc2_message(Box_tw, box_color_tw, sampling_prop=1)
+
+                self.insert_point = tuple(insert_point * 10**(-3))
+                print("insert_point : " + str(insert_point))
+                self.set_point = tuple(set_point * 10**(-3))
+                self.set_point_tw = tuple(set_point_tw * 10**(-3))
+
+                self.insert_point_cloud = generate_pc2_message(insert_point, np.array([255, 0, 255]), sampling_prop=1)
+                self.set_point_cloud = generate_pc2_message(set_point, np.array([255, 0, 255]), sampling_prop=1)
+                self.set_point_tw_cloud = generate_pc2_message(set_point_tw, np.array([255, 0, 255]), sampling_prop=1)
 
 
-                    self.quaternion_insert = tf.transformations.quaternion_from_matrix(eye)
-                    self.quaternion_tw = tf.transformations.quaternion_from_matrix(eye_tw)
+                self.quaternion_insert = tf.transformations.quaternion_from_matrix(eye)
+                self.quaternion_tw = tf.transformations.quaternion_from_matrix(eye_tw)
 
-                    self.tf_computed = True
-                else:
-                    print("NO TOMATO is attached. Change [Which_pedicel]")
+                self.tf_computed = True
+                
+            else:
+                print("select tomato is not found or not attached any pedicel or sepal")
 
 
 def main():
@@ -430,7 +439,8 @@ def main():
                 pub_box_pointcloud.publish(synthesizer.box_point_cloud)
                 pub_box_tw_pointcloud.publish(synthesizer.box_tw_point_cloud)
                 pub_pedicel_pointcloud.publish(synthesizer.pedicel_point_cloud)
-                pub_delimination_pointcloud.publish(synthesizer.delimination_point_cloud)
+                if synthesizer.delimination_point_cloud is not None:
+                    pub_delimination_pointcloud.publish(synthesizer.delimination_point_cloud)
                 pub_start_xyz_pointcloud.publish(synthesizer.start_xyz_point_cloud)
                 pub_fitted_sphere.publish(synthesizer.fitted_sphere)
 
