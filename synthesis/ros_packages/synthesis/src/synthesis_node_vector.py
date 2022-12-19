@@ -24,12 +24,12 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 
 from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output, curve_fitting
-from pedicel_quaternion import calc_pedicel_quaternion, calc_tomato_center, remove_outliers, calc_all_pedicel_quaternions
+from pedicel_quaternion import calc_pedicel_quaternion, remove_outliers, calc_all_pedicel_quaternions
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_sepal_center
 from calc import calculate
-from relation_list import pedicel_sepal, sepal_tomato, pedicel_tomato, check_relation_list
-from make_model import calc_g, calc_pedicel_end, calc_pedicel_end2, calc_delimination, generate_marker_message
+from relation_list import pedicel_sepal, sepal_tomato, pedicel_tomato, check_relation_list, blank_list
+from make_model import calc_g, calc_pedicel_end, calc_pedicel_end2, calc_delimination, generate_marker_message, straight_pedicel
 
 class Synthesis:
     def __init__(self):
@@ -160,7 +160,7 @@ class Synthesis:
 
     def main_callback(self):
         print("running main callback")
-        bbox_top = rospy.get_param("bbox_top", 0.5)
+        bbox_top = rospy.get_param("bbox_top", 0.6)
         ripeness_threshold = rospy.get_param("ripeness_threshold", 10)
         ripeness_percentile = rospy.get_param("ripeness_percentile", 0.25)
         pedicel_calc_mode = rospy.get_param("pedicel_calc_mode", 4)#収穫方法のパラメータ
@@ -176,7 +176,7 @@ class Synthesis:
         # sort pedicels
         n_pedicels = int(len(self.mask_pedicel))
         size_p_mask = [len(i) for i in self.mask_pedicel]
-        mask_pedicel_sorted = [i for _, i in sorted(zip(size_p_mask, self.mask_pedicel))] # pedicels sorted from small y-values (vertically higher) first
+        mask_pedicel_sorted = [i for _, i in sorted(zip(size_p_mask, self.mask_pedicel))][::-1] # pedicels sorted from small y-values (vertically higher) first
         print("n_pedicels:", n_pedicels, "\n")
         n_sepals = int(len(self.mask_sepal))
         size_s_mask = [np.min(i[:,0]) for i in self.mask_sepal]
@@ -237,36 +237,37 @@ class Synthesis:
             sepal_all_cut.append( sepal_all[i][remove_outliers(sepal_all[i][:,2], max_deviations),:] )
 
         center_end_dis = []
-        tomato_center_all = []
-        tomato_r_all = []
-        for i in range(len(tomato_all_cut)):
+        tomato_center_all = blank_list(n_tomatoes)
+        tomato_r_all = blank_list(n_tomatoes)
+        sepal_center_all = blank_list(n_sepals)
+        start_xyz_all = blank_list(n_pedicels)
+        end_xyz_all = blank_list(n_pedicels)
+        dela_xyz_all = blank_list(n_pedicels)
+
+        for i in range(n_tomatoes):
             _, tomato_center_i, tomato_r_i = calc_tomato_center(tomato_all[i], 0.025)
-            tomato_center_all.append(tomato_center_i)
-            tomato_r_all.append(tomato_r_i)
-
-        end_xyz_all = []
-        for n in range(len(mask_pedicel_sorted)):
-                end_xyz_all.append([])
-
-        for i in range(len(pedicel_all_cut)):
-            if len(pedicel_tomato_list[i]) == 1:
-                index = pedicel_tomato_list[i][0]
-                #_,_, end_xyz_i, _ = curve_fitting(pedicel_all[i][:,0], pedicel_all[i][:,1], pedicel_all[i][:,2], mode="polynomial",tomato_center=tomato_center_all[index] ,tomato_r=tomato_r_all[index])
-                end_xyz_i = calc_pedicel_end(pedicel_all[i],tomato_center_all[index])
-                end_xyz_all[i].append(end_xyz_i)
-                
-
-        sepal_centers = []
-        for i in range(len(sepal_all_cut)):
-            sepal_centers.append( calc_sepal_center(sepal_all_cut[i]) )
-
-#            center_i_end_dis = []
-#
-#            for j in range(len(pedicel_all_cut)):
-#                dis_min = np.min(np.sum((pedicel_all_cut[j] - tomato_center)**2, axis))
-#                center_i_end_dis.append(dis_min)
-
+            tomato_center_all[i] = tomato_center_i
+            tomato_r_all[i] = tomato_r_i
         
+        for i in range(n_sepals):
+            sepal_center_all[i] = calc_sepal_center(sepal_all_cut[i])
+
+        for i in range(len(list_sum)):
+            t_index = list_sum[i][0]
+            s_index = list_sum[i][1]
+            p_index = list_sum[i][2]
+
+            start_xyz_i = pedicel_all_cut[p_index][np.argmax(np.sum((pedicel_all_cut[p_index] - sepal_center_all[s_index])**2, axis=1))]
+            start_xyz_all[p_index] = start_xyz_i
+
+            end_xyz = sepal_center_all[s_index]
+            end_xyz = calc_pedicel_end2(pedicel_all_cut[p_index], end_xyz)
+            length = np.dot((sepal_center_all[s_index] - tomato_center_all[t_index]),(end_xyz-tomato_center_all[t_index]))/np.linalg.norm(end_xyz-tomato_center_all[t_index])
+            end_xyz_i = (end_xyz - tomato_center_all[t_index])*(length)/np.linalg.norm(end_xyz - tomato_center_all[t_index]) + tomato_center_all[t_index]
+            end_xyz_all[p_index] = end_xyz_i
+
+            dela_xyz_all[p_index] = calc_delimination(pedicel_all_cut[p_index], start_xyz_i, end_xyz_i, tomato_center_all[t_index])
+
 
         #################################################
         #######    interference  ########################
@@ -276,7 +277,29 @@ class Synthesis:
 #        #eye_all = []
 #        #eye_tw_all = []
 #
-#        for t in range(len(self.mask_tomato)):
+        for i in range(len(list_sum)):
+
+            t_index = list_sum[i][0]
+            s_index = list_sum[i][1]
+            p_index = list_sum[i][2]
+
+            plane_v = tomato_center_all[t_index] - end_xyz_all[p_index]
+            p_xyz = pedicel_all_cut[p_index]
+            t_xyz = tomato_all_cut[t_index]
+            start = start_xyz_all[p_index]
+            end = end_xyz_all[p_index]
+            P = new_e(plane_v)
+            p_xyz_new = new_field(P, p_xyz)
+            t_xyz_new = new_field(P, t_xyz)
+            start_new = new_field(P, start)
+            end_new       = new_field(P, end)
+            coefs_xz_new = np.polyfit(p_xyz_new[:,0], p_xyz_new[:,2], deg=1)
+            insert_new = np.array([1, 0, coefs_xz_new[0]])
+            if np.dot(insert_new, start_new - end_new) < 0:
+                insert_new = insert_new * -1 
+
+            t_upper_new_y = t_xyz_new[np.argsort(t_xyz_new[:,1])][:int(len(t_xyz_new)*0.1)][:,1].mean()
+    
 #    
 #            tomato_index  = t
 #            
@@ -334,20 +357,21 @@ class Synthesis:
                 print("pedicel_index : " + str(p_i_final) + "\n")
 
                 tomato_xyz = tomato_all_cut[t_i_final]
-                _, tomato_center, tomato_r = calc_tomato_center(tomato_xyz, 0.025)
+                tomato_center = tomato_center_all[t_i_final]
+                tomato_r = tomato_r_all[t_i_final]
                 self.tomato_center_point_cloud = generate_pc2_message(tomato_center, np.array([255,0,255]), sampling_prop=1)
                 self.fitted_sphere = generate_marker_message(tomato_center, tomato_r*2)
 
-                sepal_g = calc_g(sepal_all_cut[s_i_final])
+                sepal_g = sepal_center_all[s_i_final]
                 pedicel_xyz = pedicel_all_cut[p_i_final]
-                start_xyz = pedicel_xyz[np.argmax(np.sum((pedicel_xyz - sepal_g)**2, axis=1))]
-                surface_pedicel_xyz = np.array(surface_pedicel(pedicel_xyz, level=0.5))
-                #end_xyz = (sepal_g - tomato_center)*tomato_r/np.linalg.norm(sepal_g - tomato_center) + tomato_center
-                end_xyz = sepal_g
-                end_xyz = calc_pedicel_end2(pedicel_xyz, end_xyz)
-                length = np.dot((sepal_g - tomato_center),(end_xyz-tomato_center))/np.linalg.norm(end_xyz-tomato_center)
-                end_xyz = (end_xyz - tomato_center)*(length)/np.linalg.norm(end_xyz - tomato_center) + tomato_center
-                delimination = calc_delimination(pedicel_xyz, start_xyz, end_xyz, tomato_center)
+                start_xyz = start_xyz_all[p_i_final]
+                #surface_pedicel_xyz = np.array(surface_pedicel(pedicel_xyz, level=0.5))
+                
+                end_xyz = end_xyz_all[p_i_final]
+                delimination = dela_xyz_all[p_i_final]
+
+                straight_pedicel(start_xyz, end_xyz, delimination)
+
                 if delimination is not None:
                     self.delimination_point_cloud = generate_pc2_message(delimination,np.array([255,255,255]), sampling_prop=1) 
                     
@@ -356,16 +380,16 @@ class Synthesis:
 #                   else:
 #                       print("no obstale!!")
 
-                insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate(tomato_xyz,pedicel_xyz,self.xyz,end_xyz,start_xyz,0.025)
+                insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate(tomato_xyz,pedicel_xyz,self.xyz,end_xyz,start_xyz,0.5)
                 self.end_xyz_point_cloud = generate_pc2_message(end_xyz, np.array([255,0,255]), sampling_prop=1)
 
                 self.start_xyz_point_cloud = generate_pc2_message(start_xyz,np.array([255,0,0]),sampling_prop=1)
 
-                pedicel_color = np.zeros((len(surface_pedicel_xyz),3), dtype=np.int16)
-                self.pedicel_point_cloud = generate_pc2_message(surface_pedicel_xyz, pedicel_color, sampling_prop=1)
+                pedicel_color = np.zeros((len(pedicel_xyz),3), dtype=np.int16)
+                self.pedicel_point_cloud = generate_pc2_message(pedicel_xyz, pedicel_color, sampling_prop=1)
 
-                box_color = np.array([[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255],[0,255,255]])
-                box_color_tw = np.array([[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0],[0,255,0]])
+                box_color = np.zeros((len(Box),3), dtype=np.int16)
+                box_color_tw = np.zeros((len(Box_tw),3), dtype=np.int16)
                 self.box_point_cloud = generate_pc2_message(Box, box_color, sampling_prop=1)
                 self.box_tw_point_cloud = generate_pc2_message(Box_tw, box_color_tw, sampling_prop=1)
 

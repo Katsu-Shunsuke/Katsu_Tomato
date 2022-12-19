@@ -6,8 +6,9 @@ import rospy
 
 from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_pedicel_end
 from utils import curve_fitting
+from hand_box import hand_box2
 
-def calculate(tomato_xyz, pedicel_xyz, xyz, end_xyz, start_xyz, max_deviations, visualize=False, ax=False):
+def calculate(tomato_xyz, pedicel_xyz, xyz, end_xyz, start_xyz, max_deviations):
     
     #球体フィッティング・トマトの外れ値除外　#小花柄の外れ値除外
     tomato_cut, center, r = calc_tomato_center(tomato_xyz, max_deviations)
@@ -41,7 +42,8 @@ def calculate(tomato_xyz, pedicel_xyz, xyz, end_xyz, start_xyz, max_deviations, 
     if np.dot((start_xyz_new - end_xyz_new), insert_new) < 0:
         insert_new = insert_new * -1
 
-    Box_new = hand_box(tomato_upper_new_y, end_xyz_new, insert_new)
+    point = np.array([end_xyz_new[0], tomato_upper_new_y, end_xyz_new[2]])
+    Box_new = hand_box2(point,insert_new)
     
 
     #欲しかった情報
@@ -51,7 +53,6 @@ def calculate(tomato_xyz, pedicel_xyz, xyz, end_xyz, start_xyz, max_deviations, 
     tomato_delamination = back_field(P, tomato_delamination_new)
     insert = back_field(P, insert_new)
     Box = back_field(P, Box_new)
-                      
     #向きの調整
     if np.dot((start_xyz-end_xyz), insert) < 0:
         insert = insert * -1

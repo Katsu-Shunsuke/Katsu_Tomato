@@ -74,7 +74,7 @@ def sepal_tomato(mask_tomato, mask_sepal, bbox_tomato):
             x_min, y_min, x_max, y_max = this_tomato[:4]
             x_center = (x_min + x_max) / 2
             y_center = (y_min + y_max) / 2
-            if (x > x_min and x < x_max) and (y > y_min and y < y_max):#デフォルト値0.5
+            if (x > x_min and x < x_max) and (y > y_min and y < y_max):
                 overlapping_tomatoes.append(j)
                 xy_centers.append([x_center, y_center])
         
@@ -89,8 +89,21 @@ def sepal_tomato(mask_tomato, mask_sepal, bbox_tomato):
             append_tomato = overlapping_tomatoes[np.argsort(dists)][0].tolist()
             sepal_tomato_list.append([append_tomato])
             tomato_check[append_tomato] = False
-        else: # zero
-            sepal_tomato_list.append([])
+        else: # なかったら近いトマト
+            if len(mask_tomato) >= len(mask_sepal):
+                xy_centers2 = []
+                for j, this_tomato in enumerate(bbox_tomato):
+                    x_min, y_min, x_max, y_max = this_tomato[:4]
+                    x_center = (x_min + x_max) / 2
+                    y_center = (y_min + y_max) / 2
+                    xy_centers2.append([x_center, y_center])
+                xy_centers2 = np.array(xy_centers2)
+                sepal_center = np.array([x,y])
+                append_tomatoes = np.argsort(np.sqrt(np.sum((xy_centers2 - sepal_center )**2, axis=1)))
+                for append_tomato in append_tomatoes:
+                    if tomato_check[append_tomato]:
+                        sepal_tomato_list.append([append_tomato])
+                        break
 
     for i in range(len(sepal_tomato_list)):
         for j in range(i+1,len(sepal_tomato_list)):
@@ -99,7 +112,7 @@ def sepal_tomato(mask_tomato, mask_sepal, bbox_tomato):
                     tomato_index = sepal_tomato_list[i][0]
                     mask_i_center_x, mask_i_center_y = calc_mask_g(mask_sepal[i])
                     mask_j_center_x, mask_j_center_y = calc_mask_g(mask_sepal[j])
-                    x_min, y_min, x_max, y_max = bbox[tomato_index][:4]
+                    x_min, y_min, x_max, y_max = bbox_tomato[tomato_index][:4]
                     x_center = (x_min + x_max) / 2
                     y_center = (y_min + y_max) / 2
                     dis_i = np.sqrt((mask_i_center_x - x_center)**2 + (mask_i_center_y - y_center)**2)
@@ -107,7 +120,7 @@ def sepal_tomato(mask_tomato, mask_sepal, bbox_tomato):
                     if dis_i < dis_j:
                         if len(log_overlap[j]) > 1:
                             for log in range(1, len(log_overlap[j])):
-                                if tomato_check[log_overlap[j][log]]:##########################
+                                if tomato_check[log_overlap[j][log]]:
                                     sepal_tomato_list[j][0] = log_overlap[j][log]
 
                     else:
@@ -169,36 +182,47 @@ def check_relation_list(p_s, s_t, p_t, n_t, n_s, n_p):
     t_s = reverse_list(s_t, n_t)
     t_p = reverse_list(p_t, n_t)
     list_sum = []
-    flg = True
+    check_tomato = np.full(n_t,True)
 
     for s, t_list in enumerate(s_t):
-        flg = True
-        t = t_list[0]
-        n_sp = len(s_p[s])
-        n_tp = len(t_p[t])
-        
-        for i in range(n_sp):
-            for j in range(n_tp):
-                if flg:
+        if t_list != []:
+            t = t_list[0]
+            n_sp = len(s_p[s])
+            n_tp = len(t_p[t])
+            
+            for i in range(n_sp):
+                for j in range(n_tp):
                     if s_p[s][i] == t_p[t][j]:
                         p = s_p[s][i]
+                        if check_tomato[t]:
+                            list_sum.append([t,s,p])
+                            check_tomato[t] = False
+                            break
+            
+    for i in range(len(check_tomato)):
+        if check_tomato[i]:
+            t = i
+            for j in range(len(t_s[t])):
+                s = t_s[t][j]
+                n_sp = len(s_p[s])
+                for k in range(n_sp):
+                    p = s_p[s][k]
+                    if check_tomato[t]:
                         list_sum.append([t,s,p])
-                        flg = False
+                        check_tomato[t] = False
                         break
-        
-        if flg:
-            for i in range(n_sp):
-                p = s_p[s][i]
-                list_sum.append([t,s,p])
-                flg = False
-                break
 
-        if flg:
-            for i in range(n_tp):
-                p = t_p[t][i]
-                list_sum.append([t,s,p])
-                flg = False
-                break
+        if check_tomato[i]:
+            t = i
+            for j in range(len(t_s[t])):
+                s = t_s[t][j]
+                n_tp = len(t_p[t])
+                for k in range(n_tp):
+                    p = t_p[t][k]
+                    if check_tomato[t]:
+                        list_sum.append([t,s,p])
+                        check_tomato[t] = False
+                        break
 
     return np.array(list_sum)
 

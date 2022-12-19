@@ -12,7 +12,7 @@ rosparams[harvest_deg]=45
 
 # less-used
 rosparams[pedicel_cut_prop]="0.5" # where the cut point is along the pedicel curve, 0.5 means half way point. 0.8 means somewhere close to the tomato fruit.
-rosparams[bbox_top]="0.5" # the amount of top part of bbox used for determining if there is a pedicelattached to it.
+rosparams[bbox_top]="0.6" # the amount of top part of bbox used for determining if there is a pedicelattached to it.
 rosparams[ripeness_threshold]=10 # less than this value means ripe, else unripe. 
 rosparams[ripeness_percentile]="0.25" # the percentile used for removing outliers in ripeness values
 rosparams[deg]=4 # degree of polynomial curve fitting

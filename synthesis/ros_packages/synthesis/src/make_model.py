@@ -91,3 +91,10 @@ def generate_marker_message(xyz, dia):
         marker_data.lifetime = rospy.Duration()
         marker_data.type = Marker.SPHERE 
         return marker_data
+
+def straight_pedicel(start, end, dela):
+    deg = np.arccos( np.dot((start - dela),(end - dela)) / np.linalg.norm(start - dela)/np.linalg.norm(end - dela)) * 180 / math.pi
+    length = np.linalg.norm(dela - end) / np.linalg.norm(start - end)
+    if deg > 120 or length < 0.15:
+        print("warning ----- this pedicel might be straight")
+        print("deg : " + str(deg) + "length : " + str(length))
