@@ -380,9 +380,9 @@ class Synthesis:
 #                   else:
 #                       print("no obstale!!")
 
-                calculate2(t_i_final, tomato_center_all, tomato_r_all, end_xyz, start_xyz, pedicel_xyz, tomato_xyz)
+                insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate2(t_i_final, tomato_center_all, tomato_r_all, end_xyz, start_xyz, pedicel_xyz, tomato_xyz)
 
-                insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate(tomato_xyz,pedicel_xyz,self.xyz,end_xyz,start_xyz,0.5)
+                #insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate(tomato_xyz,pedicel_xyz,self.xyz,end_xyz,start_xyz,0.5)
                 self.end_xyz_point_cloud = generate_pc2_message(end_xyz, np.array([255,0,255]), sampling_prop=1)
 
                 self.start_xyz_point_cloud = generate_pc2_message(start_xyz,np.array([255,0,0]),sampling_prop=1)
