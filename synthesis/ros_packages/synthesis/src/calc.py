@@ -8,6 +8,91 @@ from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outlie
 from utils import curve_fitting
 from hand_box import hand_box2
 
+def calculate2(t_index, tomato_center_all, tomato_r_all, end_xyz,start_xyz, pedicel_xyz, tomato_xyz):
+
+    #近接（最大２つ）トマトを抽出
+    near_tomatoes = []
+    dis_center = []
+    for i in range( len(tomato_center_all) ):
+        dis = np.sqrt( np.sum((tomato_center_all[t_index] - tomato_center_all[i])**2) ) 
+        dis_center.append(dis)
+    dis_center_sorted = np.argsort(dis_center)
+
+    if len(tomato_center_all) == 2:
+        if dis_center[dis_center_sorted[1]] < 100:
+            near_tomatoes.append(dis_center_sorted[1])
+    elif len(tomato_center_all) >= 3:
+        if dis_center[dis_center_sorted[1]] < 100:
+            near_tomatoes.append(dis_center_sorted[1])
+        if dis_center[dis_center_sorted[2]] < 100:
+            near_tomatoes.append(dis_center_sorted[2])
+    print("near_tomatoes")
+    print(near_tomatoes)
+
+    #トマトが垂直になるように座標変換
+    plane_v = tomato_center_all[t_index] - end_xyz
+    P = new_e(plane_v)
+    p_xyz_new = new_field(P, pedicel_xyz)
+    t_xyz_new = new_field(P, tomato_xyz)
+    end_xyz_new = new_field(P, end_xyz)
+    start_xyz_new = new_field(P, start_xyz)
+
+    #他のトマトの中心座標も座標変換
+    near_tomatoes_new = []
+    for i in range(len(near_tomatoes)):
+        near_tomato_i = tomato_center_all[near_tomatoes[i]]
+        near_tomatoes_new.append(new_field(P, near_tomato_i))
+
+    #小花柄の向きによる挿入不可方向の計算
+    coefs_xz_new = np.polyfit(p_xyz_new[:,0], p_xyz_new[:,2], deg=1)
+    insert_new = np.array([1, 0, coefs_xz_new[0]]) / np.linalg.norm(np.array([1, 0, coefs_xz_new[0]]))
+
+    if np.dot((start_xyz_new - end_xyz_new), insert_new) < 0:
+        insert_new = insert_new * -1
+
+    #トマトの挿入ポイント
+    tomato_upper_new_y = t_xyz_new[np.argsort(t_xyz_new[:,1])][:int(len(t_xyz_new)*0.1)][:,1].mean()
+    point = np.array([end_xyz_new[0], tomato_upper_new_y, end_xyz_new[2]])
+
+    #近接トマトによる挿入不可方向の計算
+    vector_near = []
+    for i in range(len(near_tomatoes)):
+        near_t_index = near_tomatoes[i]
+        center = new_field(P, np.array([tomato_center_all[t_index][0], 0,  tomato_center_all[t_index][2]]) )
+        n_center = new_field(P, np.array([tomato_center_all[near_t_index][0], 0, tomato_center_all[near_t_index][2]]) )
+        w = 30
+        r2 = tomato_r_all[near_t_index]
+        d = np.sqrt( (center[0] - n_center[0])**2 + (center[2] - n_center[2])**2 ) 
+
+        print("\n")
+        print("r: " + str(int(r2)) + " d : " + str(int(d)))
+
+        default = np.arccos(np.dot(insert_new, center - n_center)/np.linalg.norm(insert_new)/np.linalg.norm(center - n_center)) * 180 / math.pi
+        if np.cross(insert_new, center - n_center)[1] < 0 :#上から見て半時計回り（y軸基準じゃない）
+            print("reverse")
+            default = 360 - default
+
+        if w + r2 > d :
+            theta = np.arccos((d**2 + w**2 - r2**2)/(2* d * w)) * 180 / math.pi + 90
+            print("near tomato: " + str(i) + " " + str(int(default - theta)) + " ~ " + str(int(default + theta)) )
+        else:
+            theta = np.arccos( ( w + r2 )/d ) * 180 / math.pi
+            print("near tomato: " + str(i) + " " + str(int(default - theta)) + " ~ " + str(int(default + theta)) )
+        print("theta : " + str(theta) + " default : " + str(default))
+        vector_near.append([int(default - theta), int(default + theta)])
+        print("\n")
+
+    vector_list = np.full(120, True)
+    for i in range(len(vector_near)):
+        limit_l = vector_near[i][0]
+        limit_h = vector_near[i][1]
+        for j in range(limit_l, limit_h+1):
+            if j >= -60 and j <= 60 :
+                vector_list[j+60] = False
+    print(np.where(vector_list == True))
+        
+        
+
 def calculate(tomato_xyz, pedicel_xyz, xyz, end_xyz, start_xyz, max_deviations):
     
     #球体フィッティング・トマトの外れ値除外　#小花柄の外れ値除外

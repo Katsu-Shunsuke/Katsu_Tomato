@@ -27,7 +27,7 @@ from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivativ
 from pedicel_quaternion import calc_pedicel_quaternion, remove_outliers, calc_all_pedicel_quaternions
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
 from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_sepal_center
-from calc import calculate
+from calc import calculate, calculate2
 from relation_list import pedicel_sepal, sepal_tomato, pedicel_tomato, check_relation_list, blank_list
 from make_model import calc_g, calc_pedicel_end, calc_pedicel_end2, calc_delimination, generate_marker_message, straight_pedicel
 
@@ -379,6 +379,8 @@ class Synthesis:
 #                       print("warning: may get caught on other tomatoes")
 #                   else:
 #                       print("no obstale!!")
+
+                calculate2(t_i_final, tomato_center_all, tomato_r_all, end_xyz, start_xyz, pedicel_xyz, tomato_xyz)
 
                 insert_point, set_point, set_point_tw, eye, eye_tw, Box, Box_new, Box_tw, P_calc = calculate(tomato_xyz,pedicel_xyz,self.xyz,end_xyz,start_xyz,0.5)
                 self.end_xyz_point_cloud = generate_pc2_message(end_xyz, np.array([255,0,255]), sampling_prop=1)
