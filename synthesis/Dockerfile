@@ -8,6 +8,9 @@ RUN apt update && apt install -y python3-pip tmux vim
 RUN ln -s python3.8 /usr/bin/python
 
 RUN python -m pip install scikit-learn
+RUN pip3 install numpy --upgrade
+RUN pip3 install setuptools --upgrade
+RUN pip install open3d
 
 #catkin_ws
 RUN . /opt/ros/noetic/setup.sh && \

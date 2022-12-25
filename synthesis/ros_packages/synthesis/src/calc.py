@@ -8,7 +8,11 @@ from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outlie
 from utils import curve_fitting
 from hand_box import hand_box2
 
-def pedicel_direction(p_new, basic):
+def pedicel_direction(p_new, end_new, start_new):
+    p_vector = end_new - start_new
+    P = new_e(p_vector)
+    p_vec_new = new_field(P, p_new)
+    basic = p_new[ np.argmax(p_vec_new[:,1]) ]
     p = p_new - basic
     p_x = p[:,0]
     p_z = p[:,2]
@@ -52,7 +56,7 @@ def calculate2(t_index, tomato_center_all, tomato_r_all, end_xyz,start_xyz, pedi
     #小花柄の向きによる挿入不可方向の計算
     #coefs_xz_new = np.polyfit(p_xyz_new[:,0], p_xyz_new[:,2], deg=1)
     #insert_new = np.array([1, 0, coefs_xz_new[0]]) / np.linalg.norm(np.array([1, 0, coefs_xz_new[0]]))
-    a = pedicel_direction(p_xyz_new, end_xyz_new)
+    a = pedicel_direction(p_xyz_new, end_xyz_new, start_xyz_new)
     insert_new = np.array([1, 0, a]) / np.linalg.norm(np.array([1, 0, a]))
 
     if np.dot((start_xyz_new - end_xyz_new), insert_new) < 0:
@@ -77,15 +81,17 @@ def calculate2(t_index, tomato_center_all, tomato_r_all, end_xyz,start_xyz, pedi
         print("r: " + str(int(r2)) + " d : " + str(int(d)))
 
         default = np.arccos(np.dot(insert_new, center_xz - n_center_xz)/np.linalg.norm(insert_new)/np.linalg.norm(center_xz - n_center_xz)) * 180 / math.pi
+        print(default)
+        print(np.cross(insert_new, center_xz - n_center_xz))
         if np.cross(insert_new, center_xz - n_center_xz)[1] < 0 :#上から見て半時計回り（y軸基準じゃない）
             default = 360 - default
 
         if w + r2 > d :
             theta = np.arccos((d**2 + w**2 - r2**2)/(2* d * w)) * 180 / math.pi + 90
-            print("near tomato: " + str(i) + " " + str(int(default - theta)) + " ~ " + str(int(default + theta)) )
+            print("near tomato: " + str(near_t_index) + " " + str(int(default - theta)) + " ~ " + str(int(default + theta)) )
         else:
             theta = np.arccos( ( w + r2 )/d ) * 180 / math.pi
-            print("near tomato: " + str(i) + " " + str(int(default - theta)) + " ~ " + str(int(default + theta)) )
+            print("near tomato: " + str(near_t_index) + " " + str(int(default - theta)) + " ~ " + str(int(default + theta)) )
         #print("theta : " + str(theta) + " default : " + str(default))
         vector_near.append([int(default - theta), int(default + theta)])
         
@@ -111,9 +117,9 @@ def calculate2(t_index, tomato_center_all, tomato_r_all, end_xyz,start_xyz, pedi
     #insertvectorの修正
     if insert_shift_deg is not None:
         t = insert_shift_deg
-        R = np.array([[np.cos(t), 0, np.sin(t)],
+        R = np.array([[np.cos(t), 0, -np.sin(t)],
                     [0, 1, 0],
-                    [-np.sin(t), 0, np.cos(t)]])
+                    [np.sin(t), 0, np.cos(t)]])
         insert_new = np.dot(R, insert_new.T).T
 
     if np.dot((start_xyz_new - end_xyz_new), insert_new) < 0:

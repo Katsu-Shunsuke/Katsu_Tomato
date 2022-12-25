@@ -2,6 +2,9 @@
 
 import numpy as np
 import math
+import sys
+import open3d
+
 
 def mask_to_xyz(xyz,mask):
     return xyz[mask[:,0], mask[:,1], :] 
@@ -29,6 +32,13 @@ def remove_outliers(x, max_deviations):
     centered = x - mean
     within_stds = centered < max_deviations * std # boolean array, True means within deviation
     return within_stds
+
+def remove_outliers2(xyz):
+    pointcloud1 = open3d.geometry.PointCloud()
+    pointcloud1.points = open3d.utility.Vector3dVector(xyz)
+    cl, ind = pointcloud1.remove_statistical_outlier(nb_neighbors=20,std_ratio=1.0)
+    xyz = np.asarray(cl.points)
+    return xyz
 
 def calc_tomato_center(xyz, max_deviations):#tomatoのセンターと半径を求める xyz=1x3
     """

@@ -26,7 +26,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from utils import rosarray_to_numpy, stereo_reconstruction, polynomial_derivative, generate_pc2_message, filter_instseg, visualize_output, curve_fitting
 from pedicel_quaternion import calc_pedicel_quaternion, remove_outliers, calc_all_pedicel_quaternions
 from synthesis.msg import InstSegRes, CutPoint, ExitCode # need to edit CMakeLists.txt and package.xml
-from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_sepal_center
+from functions import mask_to_xyz, index_to_xyz, index_to_xyz_all, remove_outliers,remove_outliers2, calc_tomato_center,new_e, new_field, back_field, hand_box, fit_plane, twist,calc_modify_y, new_hand_arm_rotaion, Box_new_tidy,detect_interference, surface_pedicel, calc_sepal_center
 from calc import calculate, calculate2
 from relation_list import pedicel_sepal, sepal_tomato, pedicel_tomato, check_relation_list, blank_list
 from make_model import calc_g, calc_pedicel_end, calc_pedicel_end2, calc_delimination, generate_marker_message, straight_pedicel
@@ -230,7 +230,9 @@ class Synthesis:
 
         for i in range(len(pedicel_all)):
             max_deviations = 0.05
-            pedicel_all_cut.append( pedicel_all[i][remove_outliers(pedicel_all[i][:,2], max_deviations),:] )
+            p = pedicel_all[i][remove_outliers(pedicel_all[i][:,2], max_deviations),:]
+            pedicel_all_cut.append( remove_outliers2(p) )
+            
 
         for i in range(len(sepal_all)):
             max_deviations = 0.05
@@ -363,7 +365,9 @@ class Synthesis:
                 self.fitted_sphere = generate_marker_message(tomato_center, tomato_r*2)
 
                 sepal_g = sepal_center_all[s_i_final]
+                print(pedicel_all_cut[p_i_final].shape)
                 pedicel_xyz = pedicel_all_cut[p_i_final]
+                
                 start_xyz = start_xyz_all[p_i_final]
                 #surface_pedicel_xyz = np.array(surface_pedicel(pedicel_xyz, level=0.5))
                 
