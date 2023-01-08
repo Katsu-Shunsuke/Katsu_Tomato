@@ -12,7 +12,7 @@ def pedicel_direction(p_new, end_new, start_new):
     p_vector = end_new - start_new
     P = new_e(p_vector)
     p_vec_new = new_field(P, p_new)
-    basic = p_new[ np.argmax(p_vec_new[:,1]) ]
+    basic = p_new[ np.argmin(p_vec_new[:,1]) ]
     p = p_new - basic
     p_x = p[:,0]
     p_z = p[:,2]
@@ -116,7 +116,7 @@ def calculate2(t_index, tomato_center_all, tomato_r_all, end_xyz,start_xyz, pedi
 
     #insertvectorの修正
     if insert_shift_deg is not None:
-        t =  - insert_shift_deg
+        t =  - insert_shift_deg *math.pi /180
         R = np.array([[np.cos(t), 0, np.sin(t)],
                     [0, 1, 0],
                     [-np.sin(t), 0, np.cos(t)]])
