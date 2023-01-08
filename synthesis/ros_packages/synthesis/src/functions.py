@@ -56,8 +56,8 @@ def calc_tomato_center(xyz, max_deviations):#tomatoのセンターと半径を�
 
 def new_e(vec):
     e_x = np.array([1, - vec[0] / vec[1], 0])
-    e_z = np.array([vec[0]*vec[2]/vec[1], vec[2], - vec[0] ** 2 / vec[1] - vec[1]])
-    
+    #e_z = np.array([vec[0]*vec[2]/vec[1], vec[2], - vec[0] ** 2 / vec[1] - vec[1]])
+    e_z = np.cross(e_x, vec)
     e_x_unit = (e_x / np.linalg.norm(e_x)).reshape((3,1))
     e_y_unit = (vec / np.linalg.norm(vec)).reshape((3,1))
     e_z_unit = (e_z / np.linalg.norm(e_z)).reshape((3,1))

@@ -29,25 +29,39 @@ def calc_pedicel_end(pedicel, sepal_g):
 
     return np.array([x,y,z])
 
+#def calc_pedicel_end2(pedicel, end_pre):
+#    pedicel_near = pedicel[np.argsort(np.sum((pedicel - end_pre)**2, axis=1))[:int(len(pedicel)*0.3)]]
+#    coefs_xy = np.polyfit(pedicel_near[:,0], pedicel_near[:,1], deg=1)
+#    coefs_xz = np.polyfit(pedicel_near[:,0], pedicel_near[:,2], deg=1)
+#    A_xy = pedicel_near[0][:2]
+#    n_xy = np.array([1,coefs_xy[0]])
+#    b_xy = end_pre[:2] - A_xy
+#    t_xy = np.dot(n_xy, b_xy)
+#    P_xy = A_xy + t_xy * n_xy
+#    
+#    end_1 = np.array([P_xy[0], end_pre[2]])
+#
+#    A_xz = np.array([pedicel_near[0][0], pedicel_near[0][2]])
+#    n_xz = np.array([1,coefs_xz[0]])
+#    b_xz = end_1 - A_xz
+#    t_xz = np.dot(n_xz, b_xz)
+#    P_xz = A_xz + t_xz * n_xz
+#
+#
+#   return np.array([P_xz[0], P_xy[1], P_xz[1]])
+
 def calc_pedicel_end2(pedicel, end_pre):
     pedicel_near = pedicel[np.argsort(np.sum((pedicel - end_pre)**2, axis=1))[:int(len(pedicel)*0.3)]]
     coefs_xy = np.polyfit(pedicel_near[:,0], pedicel_near[:,1], deg=1)
     coefs_xz = np.polyfit(pedicel_near[:,0], pedicel_near[:,2], deg=1)
-    A_xy = pedicel_near[0][:2]
-    n_xy = np.array([1,coefs_xy[0]])
-    b_xy = end_pre[:2] - A_xy
-    t_xy = np.dot(n_xy, b_xy)
-    P_xy = A_xy + t_xy * n_xy
-    
-    end_1 = np.array([P_xy[0], end_pre[2]])
+    n = np.array([1, coefs_xy[0], coefs_xz[0]])
+    A = pedicel_near[0]
+    b = end_pre - A
+    t = np.dot(n,b)
+    P = A + t*n
 
-    A_xz = np.array([pedicel_near[0][0], pedicel_near[0][2]])
-    n_xz = np.array([1,coefs_xz[0]])
-    b_xz = end_1 - A_xz
-    t_xz = np.dot(n_xz, b_xz)
-    P_xz = A_xz + t_xz * n_xz
+    return P
 
-    return np.array([P_xz[0], P_xy[1], P_xz[1]])
 
 def calc_delimination(pedicel, start, end, center):
     deg = np.arccos(np.dot(start-end, center-end)/np.linalg.norm(start-end)/np.linalg.norm(center-end))

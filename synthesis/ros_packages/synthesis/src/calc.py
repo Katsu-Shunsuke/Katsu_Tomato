@@ -83,7 +83,7 @@ def calculate2(t_index, tomato_center_all, tomato_r_all, end_xyz,start_xyz, pedi
         default = np.arccos(np.dot(insert_new, center_xz - n_center_xz)/np.linalg.norm(insert_new)/np.linalg.norm(center_xz - n_center_xz)) * 180 / math.pi
         print(default)
         print(np.cross(insert_new, center_xz - n_center_xz))
-        if np.cross(insert_new, center_xz - n_center_xz)[1] < 0 :#上から見て半時計回り（y軸基準じゃない）
+        if np.cross(insert_new, center_xz - n_center_xz)[1] > 0 :#上から見て半時計回り（y軸基準じゃない）
             default = 360 - default
 
         if w + r2 > d :
@@ -116,10 +116,10 @@ def calculate2(t_index, tomato_center_all, tomato_r_all, end_xyz,start_xyz, pedi
 
     #insertvectorの修正
     if insert_shift_deg is not None:
-        t = insert_shift_deg
-        R = np.array([[np.cos(t), 0, -np.sin(t)],
+        t =  - insert_shift_deg
+        R = np.array([[np.cos(t), 0, np.sin(t)],
                     [0, 1, 0],
-                    [np.sin(t), 0, np.cos(t)]])
+                    [-np.sin(t), 0, np.cos(t)]])
         insert_new = np.dot(R, insert_new.T).T
 
     if np.dot((start_xyz_new - end_xyz_new), insert_new) < 0:

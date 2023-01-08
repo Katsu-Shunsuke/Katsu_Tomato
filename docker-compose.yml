@@ -50,7 +50,7 @@ services:
 
   synthesis:
     image: synthesis_katsu:latest
-#    command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/synthesis/src/ && python -u synthesis_node_vector.py"
+    #    command: bash -c "source ~/catkin_ws/devel/setup.bash && cd ~/catkin_ws/src/synthesis/src/ && python -u synthesis_node_vector.py"
     command: python /root/keep_alive.py
     networks:
       ros:
